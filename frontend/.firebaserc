@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "af-affiliate-portal"
+  },
+  "targets": {
+    "af-affiliate-portal": {
+      "hosting": {
+        "af-affiliate-portal-b831d": [
+          "af-affiliate-portal-b831d"
+        ]
+      }
+    }
+  }
+}

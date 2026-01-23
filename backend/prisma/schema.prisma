@@ -1,0 +1,214 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Seed script configuration
+// Run with: npm run prisma:seed
+
+enum UserRole {
+  AFFILIATE
+  MARKETING_ADMIN
+  SALES_ADMIN
+  SYSTEM_ADMIN
+}
+
+enum AffiliateStatus {
+  pending
+  active
+  rejected
+  disabled
+}
+
+enum AccountType {
+  individual
+  company
+}
+
+enum ReferralStatus {
+  pending
+  approved
+  rejected
+}
+
+enum PaymentStatus {
+  unpaid
+  paid
+}
+
+enum RateType {
+  percent
+  fixed
+}
+
+enum PaymentTerm {
+  weekly
+  monthly
+  quarterly
+  yearly
+}
+
+enum DocumentType {
+  Marketing
+  Legal
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password      String
+  role          UserRole  @default(AFFILIATE)
+  emailVerified Boolean   @default(false)
+  emailVerifyToken String?
+  emailVerifyExpires DateTime?
+  resetPasswordToken String?
+  resetPasswordExpires DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  // Relations
+  affiliate     Affiliate?
+  auditLogs     AuditLog[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model Affiliate {
+  id            String          @id @default(uuid())
+  userId        String          @unique
+  slug          String          @unique
+  accountType   AccountType
+  firstName     String
+  lastName      String
+  companyName   String?
+  phone         String
+  status        AffiliateStatus @default(pending)
+  rateType      RateType        @default(percent)
+  rateValue     Float           @default(0)
+  paymentTerm   PaymentTerm     @default(monthly)
+  avatar        String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  deletedAt     DateTime?
+
+  // Relations
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referrals     Referral[]
+  zohoTicketId  String?
+
+  @@index([slug])
+  @@index([status])
+  @@index([userId])
+}
+
+model Referral {
+  id                String          @id @default(uuid())
+  affiliateId       String
+  accountType       AccountType
+  status            ReferralStatus  @default(pending)
+  paymentStatus     PaymentStatus   @default(unpaid)
+  
+  // Individual fields
+  firstName         String?
+  lastName          String?
+  email             String?
+  phone             String?
+  contractDuration  String?
+  workCountry       String?
+  nationality       String?
+  maritalStatus     String?
+  
+  // Company fields
+  companyName       String?
+  country           String?
+  contactFirstName  String?
+  contactLastName   String?
+  contactEmail      String?
+  contactPhone      String?
+  jobTitle          String?
+  linkedin          String?
+  
+  // Common
+  notes             String?         @db.Text
+  internalNotes     String?         @db.Text
+  entryDate         DateTime        @default(now())
+  paymentDate       DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  deletedAt         DateTime?
+
+  // Relations
+  affiliate         Affiliate       @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  zohoTicketId      String?
+
+  @@index([affiliateId])
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([entryDate])
+}
+
+model Document {
+  id          String        @id @default(uuid())
+  name        String
+  type        DocumentType
+  fileUrl     String
+  uploadedAt  DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime?
+
+  @@index([type])
+}
+
+model Setting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String   @db.Text
+  description String?
+  updatedAt   DateTime @updatedAt
+  updatedBy   String?
+
+  @@index([key])
+}
+
+model EmailTemplate {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  subject     String
+  body        String   @db.Text
+  enabled     Boolean  @default(true)
+  variables   String[] // Array of variable names like ["{name}", "{email}"]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([name])
+  @@index([enabled])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String
+  action      String
+  resource    String
+  resourceId  String?
+  details     Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([action])
+  @@index([resource])
+  @@index([createdAt])
+}
