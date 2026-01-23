@@ -1,0 +1,13 @@
+🌐 Affiliate Portal - Live Link
+
+Primary URL:
+https://af-affiliate-portal-b831d.web.app
+
+Alternative URL:
+https://af-affiliate-portal-b831d.firebaseapp.com
+
+Firebase Console:
+https://console.firebase.google.com/project/af-affiliate-portal/hosting
+
+GitHub Repository:
+https://github.com/evgenyrodionov/Affiliate-Portal
