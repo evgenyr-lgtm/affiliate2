@@ -1,0 +1,22 @@
+🚀 QUICK DEPLOYMENT GUIDE - GitHub Desktop
+==========================================
+
+✅ Repository Status: READY TO PUSH
+✅ Remote: https://github.com/evgenyrodionov/Affiliate-Portal.git
+✅ Commits: 4 commits ready to push
+
+STEPS:
+------
+1. Open GitHub Desktop
+2. File → Add Local Repository
+3. Select: /Users/evgenyrodionov/Desktop/Affiliate Portal
+4. Click "Publish repository" or "Push origin"
+5. Firebase will auto-deploy! 🎉
+
+LIVE SITE:
+----------
+https://af-affiliate-portal-b831d.web.app
+
+FIREBASE CONSOLE:
+-----------------
+https://console.firebase.google.com/project/af-affiliate-portal/hosting
