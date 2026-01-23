@@ -223,6 +223,7 @@ export default function SettingsPage() {
                   <label className="block text-sm font-medium text-gray-700">Avatar</label>
                   <div className="mt-2 flex items-center space-x-4">
                     {dashboardData?.affiliate?.avatar && (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={`http://localhost:4000${dashboardData.affiliate.avatar}`}
                         alt="Avatar"
