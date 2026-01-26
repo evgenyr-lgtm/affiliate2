@@ -31,6 +31,8 @@ type AffiliateRow = {
   }
 }
 
+type ExportRow = Record<string, string | number>
+
 const statusOptions = [
   { value: 'pending', label: 'Pending' },
   { value: 'active', label: 'Active' },
@@ -193,9 +195,9 @@ export default function AdminPage() {
     }))
   }
 
-  const exportRows = useMemo(() => {
+  const exportRows = useMemo<ExportRow[]>(() => {
     if (!affiliates) return []
-    return affiliates.map((affiliate: AffiliateRow) => ({
+    return affiliates.map((affiliate: AffiliateRow): ExportRow => ({
       'Affiliate ID': affiliate.affiliateNumber ?? '',
       Affiliate: `${affiliate.firstName} ${affiliate.lastName}`.trim(),
       'Date of Registration': formatDate(affiliate.createdAt),
@@ -232,10 +234,10 @@ export default function AdminPage() {
     if (format === 'csv') {
       const csv = [
         headers.join(','),
-        ...exportRows.map((row) =>
+        ...exportRows.map((row: ExportRow) =>
           headers
             .map((header) => {
-              const value = String((row as any)[header] ?? '')
+              const value = String(row[header] ?? '')
               return `"${value.replace(/"/g, '""')}"`
             })
             .join(',')
@@ -260,7 +262,9 @@ export default function AdminPage() {
     const doc = new jsPDF({ orientation: 'landscape' })
     autoTable(doc, {
       head: [headers],
-      body: exportRows.map((row) => headers.map((header) => String((row as any)[header] ?? ''))),
+      body: exportRows.map((row: ExportRow) =>
+        headers.map((header) => String(row[header] ?? ''))
+      ),
       styles: { fontSize: 8 },
       headStyles: { fillColor: [33, 37, 41] },
     })
