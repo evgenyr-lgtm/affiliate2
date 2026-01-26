@@ -65,6 +65,7 @@ model User {
   email         String    @unique
   password      String
   role          UserRole  @default(AFFILIATE)
+  isBlocked     Boolean   @default(false)
   emailVerified Boolean   @default(false)
   emailVerifyToken String?
   emailVerifyExpires DateTime?
@@ -80,10 +81,12 @@ model User {
 
   @@index([email])
   @@index([role])
+  @@index([isBlocked])
 }
 
 model Affiliate {
   id            String          @id @default(uuid())
+  affiliateNumber Int           @unique @default(autoincrement())
   userId        String          @unique
   slug          String          @unique
   accountType   AccountType
@@ -95,6 +98,7 @@ model Affiliate {
   rateType      RateType        @default(percent)
   rateValue     Float           @default(0)
   paymentTerm   PaymentTerm     @default(monthly)
+  currency      String          @default("USD")
   avatar        String?
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
@@ -108,6 +112,7 @@ model Affiliate {
   @@index([slug])
   @@index([status])
   @@index([userId])
+  @@index([affiliateNumber])
 }
 
 model Referral {

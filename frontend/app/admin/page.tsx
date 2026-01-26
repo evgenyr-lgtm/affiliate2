@@ -3,14 +3,78 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Cookies from 'js-cookie'
 import toast from 'react-hot-toast'
+import * as XLSX from 'xlsx'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
+
+type AffiliateRow = {
+  id: string
+  affiliateNumber?: number
+  firstName: string
+  lastName: string
+  companyName?: string
+  accountType: 'individual' | 'company'
+  phone?: string
+  status: 'pending' | 'active' | 'rejected'
+  paymentTerm: 'weekly' | 'monthly' | 'quarterly' | 'yearly'
+  rateType: 'percent' | 'fixed'
+  rateValue: number
+  currency?: string
+  createdAt: string
+  user?: {
+    email?: string
+    createdAt?: string
+    isBlocked?: boolean
+  }
+}
+
+const statusOptions = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'active', label: 'Active' },
+  { value: 'rejected', label: 'Rejected' },
+]
+
+const paymentTermOptions = [
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'quarterly', label: 'Quarterly' },
+  { value: 'yearly', label: 'Yearly' },
+]
+
+const rateTypeOptions = [
+  { value: 'percent', label: 'Percent' },
+  { value: 'fixed', label: 'Fixed Rate' },
+]
+
+const currencyOptions = ['USD', 'EUR', 'GBP', 'RUB']
+
+const formatDate = (value?: string) => {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '-'
+  return new Intl.DateTimeFormat('en-GB').format(date)
+}
+
+const labelFrom = (value: string, options: { value: string; label: string }[]) =>
+  options.find((option) => option.value === value)?.label || value
 
 export default function AdminPage() {
   const router = useRouter()
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<'affiliates' | 'referrals' | 'settings'>('affiliates')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [showFilters, setShowFilters] = useState(false)
+  const [exportMenuOpen, setExportMenuOpen] = useState(false)
+  const [visibleColumns, setVisibleColumns] = useState({
+    email: false,
+    phone: false,
+    accountType: false,
+    companyName: false,
+  })
+  const [drafts, setDrafts] = useState<Record<string, any>>({})
 
   useEffect(() => {
     const token = Cookies.get('accessToken')
@@ -35,16 +99,70 @@ export default function AdminPage() {
     },
   })
 
-  const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      return api.put(`/admin/affiliates/${id}/status`, { status })
+  useEffect(() => {
+    if (!affiliates) return
+    const nextDrafts: Record<string, any> = {}
+    affiliates.forEach((affiliate: AffiliateRow) => {
+      nextDrafts[affiliate.id] = {
+        status: affiliate.status,
+        paymentTerm: affiliate.paymentTerm,
+        rateType: affiliate.rateType,
+        rateValue: affiliate.rateValue,
+        currency: affiliate.currency || 'USD',
+      }
+    })
+    setDrafts(nextDrafts)
+  }, [affiliates])
+
+  const updateAffiliateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      return api.put(`/admin/affiliates/${id}`, data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-affiliates'] })
-      toast.success('Status updated successfully')
+      toast.success('Affiliate updated successfully')
+      setEditingId(null)
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to update status')
+      toast.error(error.response?.data?.message || 'Failed to update affiliate')
+    },
+  })
+
+  const deleteAffiliateMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return api.delete(`/admin/affiliates/${id}`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-affiliates'] })
+      toast.success('Affiliate deleted')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete affiliate')
+    },
+  })
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return api.post(`/admin/affiliates/${id}/reset-password`)
+    },
+    onSuccess: () => {
+      toast.success('Password reset email sent')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to send reset email')
+    },
+  })
+
+  const blockMutation = useMutation({
+    mutationFn: async ({ id, blocked }: { id: string; blocked: boolean }) => {
+      return api.post(`/admin/affiliates/${id}/block`, { blocked })
+    },
+    onSuccess: (_response, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-affiliates'] })
+      toast.success(variables.blocked ? 'User blocked' : 'User unblocked')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update block status')
     },
   })
 
@@ -61,12 +179,92 @@ export default function AdminPage() {
     },
   })
 
-  const handleStatusChange = (affiliateId: string, newStatus: string) => {
-    updateStatusMutation.mutate({ id: affiliateId, status: newStatus })
-  }
-
   const handleReferralUpdate = (referralId: string, data: any) => {
     updateReferralMutation.mutate({ id: referralId, data })
+  }
+
+  const handleDraftChange = (affiliateId: string, patch: any) => {
+    setDrafts((prev) => ({
+      ...prev,
+      [affiliateId]: {
+        ...prev[affiliateId],
+        ...patch,
+      },
+    }))
+  }
+
+  const exportRows = useMemo(() => {
+    if (!affiliates) return []
+    return affiliates.map((affiliate: AffiliateRow) => ({
+      'Affiliate ID': affiliate.affiliateNumber ?? '',
+      Affiliate: `${affiliate.firstName} ${affiliate.lastName}`.trim(),
+      'Date of Registration': formatDate(affiliate.createdAt),
+      Status: labelFrom(affiliate.status, statusOptions),
+      'Payment Term': labelFrom(affiliate.paymentTerm, paymentTermOptions),
+      'Rate Type': labelFrom(affiliate.rateType, rateTypeOptions),
+      Rate: affiliate.rateValue ?? 0,
+      Currency: affiliate.currency || 'USD',
+      Email: affiliate.user?.email || '',
+      Phone: affiliate.phone || '',
+      'Registration Type': affiliate.accountType === 'company' ? 'Company' : 'Individual',
+      'Company Name': affiliate.companyName || '–',
+    }))
+  }, [affiliates])
+
+  const downloadBlob = (blob: Blob, filename: string) => {
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  }
+
+  const handleExport = (format: 'csv' | 'xlsx' | 'pdf') => {
+    if (!exportRows.length) {
+      toast.error('No affiliates to export')
+      return
+    }
+
+    const headers = Object.keys(exportRows[0])
+    if (format === 'csv') {
+      const csv = [
+        headers.join(','),
+        ...exportRows.map((row) =>
+          headers
+            .map((header) => {
+              const value = String((row as any)[header] ?? '')
+              return `"${value.replace(/"/g, '""')}"`
+            })
+            .join(',')
+        ),
+      ].join('\n')
+      downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), 'affiliates.csv')
+      return
+    }
+
+    if (format === 'xlsx') {
+      const worksheet = XLSX.utils.json_to_sheet(exportRows)
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Affiliates')
+      const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
+      downloadBlob(
+        new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+        'affiliates.xlsx'
+      )
+      return
+    }
+
+    const doc = new jsPDF({ orientation: 'landscape' })
+    autoTable(doc, {
+      head: [headers],
+      body: exportRows.map((row) => headers.map((header) => String((row as any)[header] ?? ''))),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [33, 37, 41] },
+    })
+    doc.save('affiliates.pdf')
   }
 
   return (
@@ -95,7 +293,6 @@ export default function AdminPage() {
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          {/* Tabs */}
           <div className="border-b border-gray-200 mb-6">
             <nav className="-mb-px flex space-x-8">
               <button
@@ -131,55 +328,301 @@ export default function AdminPage() {
             </nav>
           </div>
 
-          {/* Affiliates Tab */}
           {activeTab === 'affiliates' && (
             <div>
-              <h2 className="text-2xl font-bold mb-4">Affiliates</h2>
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <h2 className="text-2xl font-bold">Affiliates</h2>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowFilters((prev) => !prev)}
+                    className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 shadow-sm hover:border-gray-300"
+                  >
+                    <span>Filters</span>
+                    <svg
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      className="h-4 w-4 text-gray-500"
+                      aria-hidden="true"
+                    >
+                      <path d="M3 4h14v2H3V4zm2 5h10v2H5V9zm3 5h4v2H8v-2z" />
+                    </svg>
+                  </button>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setExportMenuOpen((prev) => !prev)}
+                      className="inline-flex items-center gap-2 rounded-md bg-[#2b36ff] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#2330f0]"
+                    >
+                      Export List
+                    </button>
+                    {exportMenuOpen && (
+                      <div className="absolute right-0 z-10 mt-2 w-40 rounded-md border border-gray-200 bg-white shadow-lg">
+                        <button
+                          className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                          onClick={() => {
+                            handleExport('csv')
+                            setExportMenuOpen(false)
+                          }}
+                        >
+                          CSV
+                        </button>
+                        <button
+                          className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                          onClick={() => {
+                            handleExport('xlsx')
+                            setExportMenuOpen(false)
+                          }}
+                        >
+                          Excel
+                        </button>
+                        <button
+                          className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                          onClick={() => {
+                            handleExport('pdf')
+                            setExportMenuOpen(false)
+                          }}
+                        >
+                          PDF
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {showFilters && (
+                <div className="mb-4 rounded-md border border-gray-200 bg-white p-4">
+                  <p className="text-sm font-medium text-gray-700 mb-2">
+                    Additional fields
+                  </p>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    {[
+                      { key: 'email', label: 'User email' },
+                      { key: 'phone', label: 'Phone number' },
+                      { key: 'accountType', label: 'Registration type' },
+                      { key: 'companyName', label: 'Company name' },
+                    ].map((field) => (
+                      <label key={field.key} className="flex items-center gap-2 text-sm text-gray-600">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-gray-300"
+                          checked={(visibleColumns as any)[field.key]}
+                          onChange={(event) =>
+                            setVisibleColumns((prev) => ({
+                              ...prev,
+                              [field.key]: event.target.checked,
+                            }))
+                          }
+                        />
+                        {field.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {affiliatesLoading ? (
                 <div>Loading...</div>
               ) : (
                 <div className="bg-white shadow overflow-hidden sm:rounded-md">
-                  <ul className="divide-y divide-gray-200">
-                    {affiliates?.map((affiliate: any) => (
-                      <li key={affiliate.id} className="px-6 py-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">
-                              {affiliate.firstName} {affiliate.lastName}
-                            </p>
-                            <p className="text-sm text-gray-500">{affiliate.user?.email}</p>
-                            <p className="text-sm text-gray-500">
-                              Status: <span className="font-medium">{affiliate.status}</span>
-                            </p>
-                          </div>
-                          <div className="flex space-x-2">
-                            {affiliate.status === 'pending' && (
-                              <>
-                                <button
-                                  onClick={() => handleStatusChange(affiliate.id, 'active')}
-                                  className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                  <div className="overflow-auto">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50 text-gray-600">
+                        <tr>
+                          <th className="px-4 py-3 text-left font-semibold">Affiliate ID</th>
+                          <th className="px-4 py-3 text-left font-semibold">Affiliate</th>
+                          <th className="px-4 py-3 text-left font-semibold">Date of Registration</th>
+                          <th className="px-4 py-3 text-left font-semibold">Status</th>
+                          <th className="px-4 py-3 text-left font-semibold">Payment Term</th>
+                          <th className="px-4 py-3 text-left font-semibold">Rate Type</th>
+                          <th className="px-4 py-3 text-left font-semibold">Rate</th>
+                          <th className="px-4 py-3 text-left font-semibold">Currency</th>
+                          {visibleColumns.email && (
+                            <th className="px-4 py-3 text-left font-semibold">Email</th>
+                          )}
+                          {visibleColumns.phone && (
+                            <th className="px-4 py-3 text-left font-semibold">Phone</th>
+                          )}
+                          {visibleColumns.accountType && (
+                            <th className="px-4 py-3 text-left font-semibold">Registration Type</th>
+                          )}
+                          {visibleColumns.companyName && (
+                            <th className="px-4 py-3 text-left font-semibold">Company Name</th>
+                          )}
+                          <th className="px-4 py-3 text-left font-semibold">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {affiliates?.map((affiliate: AffiliateRow) => {
+                          const isEditing = editingId === affiliate.id
+                          const draft = drafts[affiliate.id] || {}
+                          const isBlocked = Boolean(affiliate.user?.isBlocked)
+                          return (
+                            <tr key={affiliate.id} className="text-gray-700">
+                              <td className="px-4 py-3">{affiliate.affiliateNumber ?? '-'}</td>
+                              <td className="px-4 py-3">
+                                {affiliate.firstName} {affiliate.lastName}
+                              </td>
+                              <td className="px-4 py-3">{formatDate(affiliate.createdAt)}</td>
+                              <td className="px-4 py-3">
+                                <select
+                                  value={draft.status || affiliate.status}
+                                  disabled={!isEditing}
+                                  onChange={(event) =>
+                                    handleDraftChange(affiliate.id, { status: event.target.value })
+                                  }
+                                  className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm disabled:bg-gray-50"
                                 >
-                                  Approve
-                                </button>
-                                <button
-                                  onClick={() => handleStatusChange(affiliate.id, 'rejected')}
-                                  className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+                                  {statusOptions.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td className="px-4 py-3">
+                                <select
+                                  value={draft.paymentTerm || affiliate.paymentTerm}
+                                  disabled={!isEditing}
+                                  onChange={(event) =>
+                                    handleDraftChange(affiliate.id, { paymentTerm: event.target.value })
+                                  }
+                                  className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm disabled:bg-gray-50"
                                 >
-                                  Reject
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
+                                  {paymentTermOptions.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td className="px-4 py-3">
+                                <select
+                                  value={draft.rateType || affiliate.rateType}
+                                  disabled={!isEditing}
+                                  onChange={(event) =>
+                                    handleDraftChange(affiliate.id, { rateType: event.target.value })
+                                  }
+                                  className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm disabled:bg-gray-50"
+                                >
+                                  {rateTypeOptions.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td className="px-4 py-3">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={draft.rateValue ?? affiliate.rateValue ?? 0}
+                                  disabled={!isEditing}
+                                  onChange={(event) =>
+                                    handleDraftChange(affiliate.id, {
+                                      rateValue: Number(event.target.value || 0),
+                                    })
+                                  }
+                                  className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm disabled:bg-gray-50"
+                                />
+                              </td>
+                              <td className="px-4 py-3">
+                                <select
+                                  value={draft.currency || affiliate.currency || 'USD'}
+                                  disabled={!isEditing}
+                                  onChange={(event) =>
+                                    handleDraftChange(affiliate.id, { currency: event.target.value })
+                                  }
+                                  className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm disabled:bg-gray-50"
+                                >
+                                  {currencyOptions.map((currency) => (
+                                    <option key={currency} value={currency}>
+                                      {currency}
+                                    </option>
+                                  ))}
+                                </select>
+                              </td>
+                              {visibleColumns.email && (
+                                <td className="px-4 py-3">{affiliate.user?.email || '-'}</td>
+                              )}
+                              {visibleColumns.phone && (
+                                <td className="px-4 py-3">{affiliate.phone || '-'}</td>
+                              )}
+                              {visibleColumns.accountType && (
+                                <td className="px-4 py-3">
+                                  {affiliate.accountType === 'company' ? 'Company' : 'Individual'}
+                                </td>
+                              )}
+                              {visibleColumns.companyName && (
+                                <td className="px-4 py-3">{affiliate.companyName || '–'}</td>
+                              )}
+                              <td className="px-4 py-3">
+                                <div className="flex flex-wrap gap-2">
+                                  {!isEditing ? (
+                                    <button
+                                      className="rounded-md border border-gray-200 px-3 py-1 text-xs font-medium text-gray-700 hover:border-gray-300"
+                                      onClick={() => setEditingId(affiliate.id)}
+                                    >
+                                      Edit
+                                    </button>
+                                  ) : (
+                                    <button
+                                      className="rounded-md bg-[#2b36ff] px-3 py-1 text-xs font-semibold text-white hover:bg-[#2330f0]"
+                                      onClick={() =>
+                                        updateAffiliateMutation.mutate({
+                                          id: affiliate.id,
+                                          data: draft,
+                                        })
+                                      }
+                                    >
+                                      Save
+                                    </button>
+                                  )}
+                                  <button
+                                    className="rounded-md border border-gray-200 px-3 py-1 text-xs font-medium text-gray-700 hover:border-gray-300"
+                                    onClick={() => resetPasswordMutation.mutate(affiliate.id)}
+                                  >
+                                    Reset Password
+                                  </button>
+                                  <button
+                                    className="rounded-md border border-gray-200 px-3 py-1 text-xs font-medium text-gray-700 hover:border-gray-300"
+                                    onClick={() =>
+                                      blockMutation.mutate({
+                                        id: affiliate.id,
+                                        blocked: !isBlocked,
+                                      })
+                                    }
+                                  >
+                                    {isBlocked ? 'Unblock' : 'Block'}
+                                  </button>
+                                  <button
+                                    className="rounded-md border border-red-200 px-3 py-1 text-xs font-medium text-red-600 hover:border-red-300"
+                                    onClick={() => {
+                                      const confirmed = window.confirm(
+                                        'Delete this affiliate? This will block their access.'
+                                      )
+                                      if (confirmed) {
+                                        deleteAffiliateMutation.mutate(affiliate.id)
+                                      }
+                                    }}
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </div>
           )}
 
-          {/* Referrals Tab */}
           {activeTab === 'referrals' && (
             <div>
               <h2 className="text-2xl font-bold mb-4">Referrals</h2>
@@ -205,8 +648,8 @@ export default function AdminPage() {
                           <div className="flex space-x-2">
                             <select
                               value={referral.status}
-                              onChange={(e) =>
-                                handleReferralUpdate(referral.id, { status: e.target.value })
+                              onChange={(event) =>
+                                handleReferralUpdate(referral.id, { status: event.target.value })
                               }
                               className="text-sm border rounded px-2 py-1"
                             >
@@ -216,8 +659,8 @@ export default function AdminPage() {
                             </select>
                             <select
                               value={referral.paymentStatus}
-                              onChange={(e) =>
-                                handleReferralUpdate(referral.id, { paymentStatus: e.target.value })
+                              onChange={(event) =>
+                                handleReferralUpdate(referral.id, { paymentStatus: event.target.value })
                               }
                               className="text-sm border rounded px-2 py-1"
                             >
@@ -234,7 +677,6 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* Settings Tab */}
           {activeTab === 'settings' && (
             <div>
               <h2 className="text-2xl font-bold mb-4">Settings</h2>

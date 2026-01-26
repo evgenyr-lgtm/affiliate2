@@ -51,77 +51,95 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to your account
-          </h2>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
-          <div className="rounded-md shadow-sm -space-y-px">
-            <div>
-              <label htmlFor="email" className="sr-only">
-                Email address
-              </label>
-              <input
-                {...register('email')}
-                type="email"
-                autoComplete="email"
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
-                placeholder="Email address"
-              />
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
-              )}
+    <div className="min-h-screen bg-[#2b36ff] flex items-center justify-center px-4 py-10">
+      <div className="w-full max-w-5xl">
+        <div className="overflow-hidden rounded-[28px] bg-white shadow-2xl grid md:grid-cols-2">
+          <div className="p-10 sm:p-12">
+            <div className="flex items-center gap-3">
+              <img src="/af-logo.png" alt="Access Financial" className="h-10 w-auto" />
             </div>
-            <div>
-              <label htmlFor="password" className="sr-only">
-                Password
-              </label>
-              <input
-                {...register('password')}
-                type="password"
-                autoComplete="current-password"
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
-              />
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
-              )}
-            </div>
-          </div>
 
-          <div className="flex items-center justify-between">
-            <div className="text-sm">
-              <a
-                href="/forgot-password"
-                className="font-medium text-primary-600 hover:text-primary-500"
+            <div className="mt-8">
+              <h1 className="text-3xl font-semibold text-gray-900">Login</h1>
+              <p className="mt-2 text-sm text-gray-500">Please enter your details.</p>
+            </div>
+
+            <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="email" className="sr-only">
+                    Email address
+                  </label>
+                  <input
+                    {...register('email')}
+                    type="email"
+                    autoComplete="email"
+                    className="block w-full rounded-full border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+                    placeholder="Email"
+                  />
+                  {errors.email && (
+                    <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+                  )}
+                </div>
+                <div>
+                  <label htmlFor="password" className="sr-only">
+                    Password
+                  </label>
+                  <input
+                    {...register('password')}
+                    type="password"
+                    autoComplete="current-password"
+                    className="block w-full rounded-full border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+                    placeholder="Password"
+                  />
+                  {errors.password && (
+                    <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-sm">
+                <label className="flex items-center gap-2 text-gray-500">
+                  <input type="checkbox" className="h-4 w-4 rounded border-gray-300" />
+                  Remember for 30 days
+                </label>
+                <a href="/forgot-password" className="font-medium text-primary-600 hover:text-primary-500">
+                  Forgot password?
+                </a>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full rounded-full bg-[#2b36ff] px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition hover:bg-[#2330f0] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-200 disabled:opacity-50"
               >
-                Forgot your password?
-              </a>
+                {isLoading ? 'Signing in...' : 'Login'}
+              </button>
+
+              <div className="text-center text-sm text-gray-500">
+                Don&apos;t have an account?{' '}
+                <a href="/register" className="font-semibold text-primary-600 hover:text-primary-500">
+                  Register
+                </a>
+              </div>
+            </form>
+          </div>
+
+          <div className="hidden md:block p-4">
+            <div
+              className="h-full w-full rounded-[24px] bg-[#0f1ccf] relative overflow-hidden"
+              style={{
+                backgroundImage:
+                  'radial-gradient(circle at 70% 20%, #7b86ff 0%, #2b36ff 35%, #0b1a8f 100%)',
+              }}
+            >
+              <div className="absolute inset-0 opacity-30">
+                <div className="absolute -right-16 -top-24 h-72 w-72 rounded-full bg-white/20 blur-2xl" />
+                <div className="absolute -right-8 bottom-10 h-80 w-80 rounded-full bg-white/10 blur-3xl" />
+              </div>
             </div>
           </div>
-
-          <div>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
-            >
-              {isLoading ? 'Signing in...' : 'Sign in'}
-            </button>
-          </div>
-
-          <div className="text-center">
-            <a
-              href="/register"
-              className="font-medium text-primary-600 hover:text-primary-500"
-            >
-              Don&apos;t have an account? Register
-            </a>
-          </div>
-        </form>
+        </div>
       </div>
     </div>
   )

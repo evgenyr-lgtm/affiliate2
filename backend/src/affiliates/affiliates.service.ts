@@ -41,6 +41,7 @@ export class AffiliatesService {
     return {
       affiliate: {
         id: affiliate.id,
+        affiliateNumber: affiliate.affiliateNumber,
         slug: affiliate.slug,
         status: affiliate.status,
         firstName: affiliate.firstName,
@@ -49,6 +50,7 @@ export class AffiliatesService {
         rateType: affiliate.rateType,
         rateValue: affiliate.rateValue,
         paymentTerm: affiliate.paymentTerm,
+        currency: affiliate.currency,
         avatar: affiliate.avatar,
       },
       referrals: affiliate.referrals,

@@ -119,6 +119,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    if (user.isBlocked) {
+      throw new UnauthorizedException('Your account has been blocked');
+    }
+
     if (!user.emailVerified) {
       throw new UnauthorizedException('Please verify your email before logging in');
     }
@@ -127,6 +131,9 @@ export class AuthService {
     if (user.role === UserRole.AFFILIATE && user.affiliate) {
       if (user.affiliate.status === AffiliateStatus.rejected) {
         throw new UnauthorizedException('Your application has been rejected');
+      }
+      if (user.affiliate.status === AffiliateStatus.disabled) {
+        throw new UnauthorizedException('Your account has been disabled');
       }
     }
 
