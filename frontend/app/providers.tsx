@@ -2,7 +2,6 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
-import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3'
 import { useState } from 'react'
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -15,22 +14,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
     },
   }))
 
-  const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || ''
-
   return (
-    <GoogleReCaptchaProvider
-      reCaptchaKey={recaptchaSiteKey}
-      scriptProps={{
-        async: false,
-        defer: false,
-        appendTo: 'head',
-        nonce: undefined,
-      }}
-    >
-      <QueryClientProvider client={queryClient}>
-        {children}
-        <Toaster position="top-right" />
-      </QueryClientProvider>
-    </GoogleReCaptchaProvider>
+    <QueryClientProvider client={queryClient}>
+      {children}
+      <Toaster position="top-right" />
+    </QueryClientProvider>
   )
 }

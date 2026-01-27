@@ -16,7 +16,6 @@ import { LoginDto } from './dto/login.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { RecaptchaGuard } from './recaptcha/recaptcha.guard';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -24,10 +23,9 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  @UseGuards(RecaptchaGuard)
   @ApiOperation({ summary: 'Register a new affiliate' })
-  async register(@Body() registerDto: RegisterDto, @Request() req) {
-    return this.authService.register(registerDto, req.recaptchaToken);
+  async register(@Body() registerDto: RegisterDto) {
+    return this.authService.register(registerDto);
   }
 
   @Post('login')

@@ -87,14 +87,14 @@ export class ReferralsService {
       where: { id },
       data: {
         ...dto,
-        paymentDate: dto.paymentStatus === PaymentStatus.paid && !referral.paymentDate 
-          ? new Date() 
+        paymentDate: dto.paymentStatus === PaymentStatus.paid && !referral.paymentDate
+          ? new Date()
           : referral.paymentDate,
       },
     });
 
     // If payment status changed to paid, notify affiliate
-    if (dto.paymentStatus === PaymentStatus.paid && referral.paymentStatus === PaymentStatus.unpaid) {
+    if (dto.paymentStatus === PaymentStatus.paid && referral.paymentStatus !== PaymentStatus.paid) {
       const amount = this.calculateCommission(referral.affiliate);
       await this.emailService.sendPaymentDone(
         referral.affiliate.user.email,
@@ -110,7 +110,9 @@ export class ReferralsService {
     status?: ReferralStatus;
     paymentStatus?: PaymentStatus;
   }) {
-    const where: any = {};
+    const where: any = {
+      deletedAt: null,
+    };
 
     if (affiliateId) {
       where.affiliateId = affiliateId;

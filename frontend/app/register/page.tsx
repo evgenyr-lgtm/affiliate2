@@ -3,34 +3,64 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
+import Image from 'next/image'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useGoogleReCaptcha } from 'react-google-recaptcha-v3'
 import api from '@/lib/api'
 import toast from 'react-hot-toast'
+import Cookies from 'js-cookie'
 
-const registerSchema = z.object({
-  accountType: z.enum(['individual', 'company']),
-  firstName: z.string().min(1, 'First name is required'),
-  lastName: z.string().min(1, 'Last name is required'),
-  companyName: z.string().optional(),
-  email: z.string().email('Invalid email address'),
-  phone: z.string().min(1, 'Phone is required'),
-  password: z
-    .string()
-    .min(8, 'Password must be at least 8 characters')
-    .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-      'Password must contain uppercase, lowercase, and number'
-    ),
-})
+type PasswordStrength = 'Easy' | 'Medium' | 'Strong'
+
+const getPasswordStrength = (password: string): PasswordStrength => {
+  const lengthScore = password.length >= 12 ? 2 : password.length >= 8 ? 1 : 0
+  const hasLower = /[a-z]/.test(password)
+  const hasUpper = /[A-Z]/.test(password)
+  const hasNumber = /\d/.test(password)
+  const hasSymbol = /[^A-Za-z0-9]/.test(password)
+  const variety = [hasLower, hasUpper, hasNumber, hasSymbol].filter(Boolean).length
+  const score = lengthScore + variety
+
+  if (password.length >= 12 && variety >= 4 && score >= 5) return 'Strong'
+  if (password.length >= 8 && variety >= 3) return 'Medium'
+  return 'Easy'
+}
+
+const registerSchema = z
+  .object({
+    accountType: z.enum(['individual', 'company']),
+    firstName: z.string().min(1, 'First name is required'),
+    lastName: z.string().min(1, 'Last name is required'),
+    companyName: z.string().optional(),
+    email: z.string().email('Invalid email address'),
+    phone: z.string().min(1, 'Phone is required'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+    confirmPassword: z.string().min(1, 'Repeat password is required'),
+  })
+  .superRefine((data, ctx) => {
+    if (data.password !== data.confirmPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['confirmPassword'],
+        message: 'Passwords do not match',
+      })
+    }
+
+    const strength = getPasswordStrength(data.password)
+    if (strength === 'Easy') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['password'],
+        message: 'Password is too weak. Use upper/lowercase, numbers, and symbols.',
+      })
+    }
+  })
 
 type RegisterForm = z.infer<typeof registerSchema>
 
 export default function RegisterPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
-  const { executeRecaptcha } = useGoogleReCaptcha()
 
   const {
     register,
@@ -45,24 +75,25 @@ export default function RegisterPage() {
   })
 
   const accountType = watch('accountType')
+  const passwordValue = watch('password') || ''
+  const passwordStrength = passwordValue ? getPasswordStrength(passwordValue) : null
 
   const onSubmit = async (data: RegisterForm) => {
-    if (!executeRecaptcha) {
-      toast.error('reCAPTCHA not loaded')
-      return
-    }
-
     setIsLoading(true)
     try {
-      const recaptchaToken = await executeRecaptcha('register')
+      const { confirmPassword, ...payload } = data
+      const response = await api.post('/auth/register', payload)
+      const { accessToken, refreshToken, user } = response.data
 
-      await api.post('/auth/register', {
-        ...data,
-        recaptchaToken,
-      })
+      Cookies.set('accessToken', accessToken)
+      Cookies.set('refreshToken', refreshToken)
 
-      toast.success('Registration successful! Please check your email to verify your account.')
-      router.push('/login')
+      toast.success('Registration successful! Welcome to your account.')
+      if (user?.role === 'AFFILIATE') {
+        router.push('/dashboard')
+      } else {
+        router.push('/admin')
+      }
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Registration failed')
     } finally {
@@ -76,7 +107,14 @@ export default function RegisterPage() {
         <div className="overflow-hidden rounded-[28px] bg-white shadow-2xl grid md:grid-cols-2">
           <div className="p-10 sm:p-12">
             <div className="flex items-center gap-3">
-              <img src="/af-logo.png" alt="Access Financial" className="h-10 w-auto" />
+              <Image
+                src="/af-logo-short-dark.svg"
+                alt="Access Financial"
+                width={120}
+                height={60}
+                className="h-10 w-auto"
+                priority
+              />
             </div>
 
             <div className="mt-8">
@@ -179,10 +217,41 @@ export default function RegisterPage() {
                     type="password"
                     className="mt-2 block w-full rounded-full border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
                   />
+                  {passwordStrength && (
+                    <p
+                      className={`mt-2 text-xs font-medium ${
+                        passwordStrength === 'Strong'
+                          ? 'text-green-600'
+                          : passwordStrength === 'Medium'
+                          ? 'text-yellow-600'
+                          : 'text-red-600'
+                      }`}
+                    >
+                      Strength: {passwordStrength}
+                    </p>
+                  )}
                   {errors.password && (
                     <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
                   )}
                 </div>
+
+                {passwordValue.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600">
+                      Repeat password *
+                    </label>
+                    <input
+                      {...register('confirmPassword')}
+                      type="password"
+                      className="mt-2 block w-full rounded-full border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+                    />
+                    {errors.confirmPassword && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {errors.confirmPassword.message}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               <button

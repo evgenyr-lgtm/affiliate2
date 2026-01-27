@@ -41,6 +41,7 @@ enum ReferralStatus {
 enum PaymentStatus {
   unpaid
   paid
+  rejected
 }
 
 enum RateType {
@@ -117,6 +118,7 @@ model Affiliate {
 
 model Referral {
   id                String          @id @default(uuid())
+  referralNumber    Int             @unique @default(autoincrement())
   affiliateId       String
   accountType       AccountType
   status            ReferralStatus  @default(pending)
@@ -159,6 +161,7 @@ model Referral {
   @@index([status])
   @@index([paymentStatus])
   @@index([entryDate])
+  @@index([referralNumber])
 }
 
 model Document {

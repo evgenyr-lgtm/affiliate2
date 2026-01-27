@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
+import Image from 'next/image'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import api from '@/lib/api'
@@ -56,7 +57,14 @@ export default function LoginPage() {
         <div className="overflow-hidden rounded-[28px] bg-white shadow-2xl grid md:grid-cols-2">
           <div className="p-10 sm:p-12">
             <div className="flex items-center gap-3">
-              <img src="/af-logo.png" alt="Access Financial" className="h-10 w-auto" />
+              <Image
+                src="/af-logo-short-dark.svg"
+                alt="Access Financial"
+                width={120}
+                height={60}
+                className="h-10 w-auto"
+                priority
+              />
             </div>
 
             <div className="mt-8">

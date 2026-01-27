@@ -31,6 +31,29 @@ type AffiliateRow = {
   }
 }
 
+type ReferralRow = {
+  id: string
+  referralNumber?: number
+  accountType: 'individual' | 'company'
+  firstName?: string
+  lastName?: string
+  companyName?: string
+  contactFirstName?: string
+  contactLastName?: string
+  email?: string
+  phone?: string
+  contactEmail?: string
+  contactPhone?: string
+  status: 'pending' | 'approved' | 'rejected'
+  paymentStatus: 'unpaid' | 'paid' | 'rejected'
+  internalNotes?: string
+  entryDate?: string
+  affiliate?: {
+    firstName?: string
+    lastName?: string
+  }
+}
+
 type ExportRow = Record<string, string | number>
 
 const statusOptions = [
@@ -51,6 +74,18 @@ const rateTypeOptions = [
   { value: 'fixed', label: 'Fixed Rate' },
 ]
 
+const referralStatusOptions = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'rejected', label: 'Rejected' },
+]
+
+const paymentStatusOptions = [
+  { value: 'unpaid', label: 'Unpaid' },
+  { value: 'paid', label: 'Paid' },
+  { value: 'rejected', label: 'Rejected' },
+]
+
 const currencyOptions = ['USD', 'EUR', 'GBP', 'RUB']
 
 const formatDate = (value?: string) => {
@@ -62,6 +97,25 @@ const formatDate = (value?: string) => {
 
 const labelFrom = (value: string, options: { value: string; label: string }[]) =>
   options.find((option) => option.value === value)?.label || value
+
+const getReferralName = (referral: ReferralRow) => {
+  if (referral.accountType === 'company') {
+    const contactName = `${referral.contactFirstName || ''} ${referral.contactLastName || ''}`.trim()
+    return contactName || referral.companyName || '-'
+  }
+  const name = `${referral.firstName || ''} ${referral.lastName || ''}`.trim()
+  return name || '-'
+}
+
+const getReferralEmail = (referral: ReferralRow) =>
+  referral.accountType === 'company'
+    ? referral.contactEmail || referral.email || ''
+    : referral.email || referral.contactEmail || ''
+
+const getReferralPhone = (referral: ReferralRow) =>
+  referral.accountType === 'company'
+    ? referral.contactPhone || referral.phone || ''
+    : referral.phone || referral.contactPhone || ''
 
 export default function AdminPage() {
   const router = useRouter()
@@ -77,6 +131,15 @@ export default function AdminPage() {
     companyName: false,
   })
   const [drafts, setDrafts] = useState<Record<string, any>>({})
+  const [referralEditingId, setReferralEditingId] = useState<string | null>(null)
+  const [showReferralFilters, setShowReferralFilters] = useState(false)
+  const [referralExportMenuOpen, setReferralExportMenuOpen] = useState(false)
+  const [visibleReferralColumns, setVisibleReferralColumns] = useState({
+    email: false,
+    phone: false,
+    notes: false,
+  })
+  const [referralDrafts, setReferralDrafts] = useState<Record<string, any>>({})
 
   useEffect(() => {
     const token = Cookies.get('accessToken')
@@ -115,6 +178,19 @@ export default function AdminPage() {
     })
     setDrafts(nextDrafts)
   }, [affiliates])
+
+  useEffect(() => {
+    if (!referrals) return
+    const nextDrafts: Record<string, any> = {}
+    referrals.forEach((referral: ReferralRow) => {
+      nextDrafts[referral.id] = {
+        status: referral.status,
+        paymentStatus: referral.paymentStatus,
+        internalNotes: referral.internalNotes || '',
+      }
+    })
+    setReferralDrafts(nextDrafts)
+  }, [referrals])
 
   const updateAffiliateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
@@ -175,15 +251,25 @@ export default function AdminPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-referrals'] })
       toast.success('Referral updated successfully')
+      setReferralEditingId(null)
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to update referral')
     },
   })
 
-  const handleReferralUpdate = (referralId: string, data: any) => {
-    updateReferralMutation.mutate({ id: referralId, data })
-  }
+  const deleteReferralMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return api.delete(`/referrals/${id}`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-referrals'] })
+      toast.success('Referral deleted')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete referral')
+    },
+  })
 
   const handleDraftChange = (affiliateId: string, patch: any) => {
     setDrafts((prev) => ({
@@ -195,7 +281,17 @@ export default function AdminPage() {
     }))
   }
 
-  const exportRows = useMemo<ExportRow[]>(() => {
+  const handleReferralDraftChange = (referralId: string, patch: any) => {
+    setReferralDrafts((prev) => ({
+      ...prev,
+      [referralId]: {
+        ...prev[referralId],
+        ...patch,
+      },
+    }))
+  }
+
+  const affiliateExportRows = useMemo<ExportRow[]>(() => {
     if (!affiliates) return []
     return affiliates.map((affiliate: AffiliateRow): ExportRow => ({
       'Affiliate ID': affiliate.affiliateNumber ?? '',
@@ -213,6 +309,21 @@ export default function AdminPage() {
     }))
   }, [affiliates])
 
+  const referralExportRows = useMemo<ExportRow[]>(() => {
+    if (!referrals) return []
+    return referrals.map((referral: ReferralRow): ExportRow => ({
+      'Referral Registration ID': referral.referralNumber ?? '',
+      'Referral Name': getReferralName(referral),
+      'Referral Registration Date': formatDate(referral.entryDate),
+      Status: labelFrom(referral.status, referralStatusOptions),
+      Affiliate: `${referral.affiliate?.firstName || ''} ${referral.affiliate?.lastName || ''}`.trim(),
+      'Payment Status': labelFrom(referral.paymentStatus, paymentStatusOptions),
+      Email: getReferralEmail(referral) || '',
+      Phone: getReferralPhone(referral) || '',
+      Notes: referral.internalNotes || '',
+    }))
+  }, [referrals])
+
   const downloadBlob = (blob: Blob, filename: string) => {
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -224,17 +335,17 @@ export default function AdminPage() {
     window.URL.revokeObjectURL(url)
   }
 
-  const handleExport = (format: 'csv' | 'xlsx' | 'pdf') => {
-    if (!exportRows.length) {
-      toast.error('No affiliates to export')
+  const exportRowsToFile = (rows: ExportRow[], format: 'csv' | 'xlsx' | 'pdf', filename: string) => {
+    if (!rows.length) {
+      toast.error('No data to export')
       return
     }
 
-    const headers = Object.keys(exportRows[0])
+    const headers = Object.keys(rows[0])
     if (format === 'csv') {
       const csv = [
         headers.join(','),
-        ...exportRows.map((row: ExportRow) =>
+        ...rows.map((row: ExportRow) =>
           headers
             .map((header) => {
               const value = String(row[header] ?? '')
@@ -243,18 +354,18 @@ export default function AdminPage() {
             .join(',')
         ),
       ].join('\n')
-      downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), 'affiliates.csv')
+      downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), filename)
       return
     }
 
     if (format === 'xlsx') {
-      const worksheet = XLSX.utils.json_to_sheet(exportRows)
+      const worksheet = XLSX.utils.json_to_sheet(rows)
       const workbook = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Affiliates')
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Export')
       const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
       downloadBlob(
         new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
-        'affiliates.xlsx'
+        filename
       )
       return
     }
@@ -262,13 +373,23 @@ export default function AdminPage() {
     const doc = new jsPDF({ orientation: 'landscape' })
     autoTable(doc, {
       head: [headers],
-      body: exportRows.map((row: ExportRow) =>
+      body: rows.map((row: ExportRow) =>
         headers.map((header) => String(row[header] ?? ''))
       ),
       styles: { fontSize: 8 },
       headStyles: { fillColor: [33, 37, 41] },
     })
-    doc.save('affiliates.pdf')
+    doc.save(filename)
+  }
+
+  const handleAffiliateExport = (format: 'csv' | 'xlsx' | 'pdf') => {
+    const filename = format === 'csv' ? 'affiliates.csv' : format === 'xlsx' ? 'affiliates.xlsx' : 'affiliates.pdf'
+    exportRowsToFile(affiliateExportRows, format, filename)
+  }
+
+  const handleReferralExport = (format: 'csv' | 'xlsx' | 'pdf') => {
+    const filename = format === 'csv' ? 'referrals.csv' : format === 'xlsx' ? 'referrals.xlsx' : 'referrals.pdf'
+    exportRowsToFile(referralExportRows, format, filename)
   }
 
   return (
@@ -365,7 +486,7 @@ export default function AdminPage() {
                         <button
                           className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
                           onClick={() => {
-                            handleExport('csv')
+                            handleAffiliateExport('csv')
                             setExportMenuOpen(false)
                           }}
                         >
@@ -374,7 +495,7 @@ export default function AdminPage() {
                         <button
                           className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
                           onClick={() => {
-                            handleExport('xlsx')
+                            handleAffiliateExport('xlsx')
                             setExportMenuOpen(false)
                           }}
                         >
@@ -383,7 +504,7 @@ export default function AdminPage() {
                         <button
                           className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
                           onClick={() => {
-                            handleExport('pdf')
+                            handleAffiliateExport('pdf')
                             setExportMenuOpen(false)
                           }}
                         >
@@ -629,53 +750,239 @@ export default function AdminPage() {
 
           {activeTab === 'referrals' && (
             <div>
-              <h2 className="text-2xl font-bold mb-4">Referrals</h2>
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <h2 className="text-2xl font-bold">Referrals</h2>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowReferralFilters((prev) => !prev)}
+                    className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 shadow-sm hover:border-gray-300"
+                  >
+                    <span>Filters</span>
+                    <svg
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      className="h-4 w-4 text-gray-500"
+                      aria-hidden="true"
+                    >
+                      <path d="M3 4h14v2H3V4zm2 5h10v2H5V9zm3 5h4v2H8v-2z" />
+                    </svg>
+                  </button>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setReferralExportMenuOpen((prev) => !prev)}
+                      className="inline-flex items-center gap-2 rounded-md bg-[#2b36ff] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#2330f0]"
+                    >
+                      Export List
+                    </button>
+                    {referralExportMenuOpen && (
+                      <div className="absolute right-0 z-10 mt-2 w-40 rounded-md border border-gray-200 bg-white shadow-lg">
+                        <button
+                          className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                          onClick={() => {
+                            handleReferralExport('csv')
+                            setReferralExportMenuOpen(false)
+                          }}
+                        >
+                          CSV
+                        </button>
+                        <button
+                          className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                          onClick={() => {
+                            handleReferralExport('xlsx')
+                            setReferralExportMenuOpen(false)
+                          }}
+                        >
+                          Excel
+                        </button>
+                        <button
+                          className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                          onClick={() => {
+                            handleReferralExport('pdf')
+                            setReferralExportMenuOpen(false)
+                          }}
+                        >
+                          PDF
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {showReferralFilters && (
+                <div className="mb-4 rounded-md border border-gray-200 bg-white p-4">
+                  <p className="text-sm font-medium text-gray-700 mb-2">
+                    Additional fields
+                  </p>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {[
+                      { key: 'email', label: 'Referral email' },
+                      { key: 'phone', label: 'Telephone number' },
+                      { key: 'notes', label: 'Notes' },
+                    ].map((field) => (
+                      <label key={field.key} className="flex items-center gap-2 text-sm text-gray-600">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-gray-300"
+                          checked={(visibleReferralColumns as any)[field.key]}
+                          onChange={(event) =>
+                            setVisibleReferralColumns((prev) => ({
+                              ...prev,
+                              [field.key]: event.target.checked,
+                            }))
+                          }
+                        />
+                        {field.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {referralsLoading ? (
                 <div>Loading...</div>
               ) : (
                 <div className="bg-white shadow overflow-hidden sm:rounded-md">
-                  <ul className="divide-y divide-gray-200">
-                    {referrals?.map((referral: any) => (
-                      <li key={referral.id} className="px-6 py-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">
-                              {referral.firstName} {referral.lastName || referral.companyName}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              Status: {referral.status} | Payment: {referral.paymentStatus}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              Affiliate: {referral.affiliate?.firstName} {referral.affiliate?.lastName}
-                            </p>
-                          </div>
-                          <div className="flex space-x-2">
-                            <select
-                              value={referral.status}
-                              onChange={(event) =>
-                                handleReferralUpdate(referral.id, { status: event.target.value })
-                              }
-                              className="text-sm border rounded px-2 py-1"
-                            >
-                              <option value="pending">Pending</option>
-                              <option value="approved">Approved</option>
-                              <option value="rejected">Rejected</option>
-                            </select>
-                            <select
-                              value={referral.paymentStatus}
-                              onChange={(event) =>
-                                handleReferralUpdate(referral.id, { paymentStatus: event.target.value })
-                              }
-                              className="text-sm border rounded px-2 py-1"
-                            >
-                              <option value="unpaid">Unpaid</option>
-                              <option value="paid">Paid</option>
-                            </select>
-                          </div>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="overflow-auto">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50 text-gray-600">
+                        <tr>
+                          <th className="px-4 py-3 text-left font-semibold">Referral Registration ID</th>
+                          <th className="px-4 py-3 text-left font-semibold">Referral Name</th>
+                          <th className="px-4 py-3 text-left font-semibold">Referral Registration Date</th>
+                          <th className="px-4 py-3 text-left font-semibold">Status</th>
+                          <th className="px-4 py-3 text-left font-semibold">Affiliate</th>
+                          <th className="px-4 py-3 text-left font-semibold">Payment Status</th>
+                          {visibleReferralColumns.email && (
+                            <th className="px-4 py-3 text-left font-semibold">Referral Email</th>
+                          )}
+                          {visibleReferralColumns.phone && (
+                            <th className="px-4 py-3 text-left font-semibold">Telephone</th>
+                          )}
+                          {visibleReferralColumns.notes && (
+                            <th className="px-4 py-3 text-left font-semibold">Notes</th>
+                          )}
+                          <th className="px-4 py-3 text-left font-semibold">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {referrals?.map((referral: ReferralRow) => {
+                          const isEditing = referralEditingId === referral.id
+                          const draft = referralDrafts[referral.id] || {}
+                          return (
+                            <tr key={referral.id} className="text-gray-700">
+                              <td className="px-4 py-3">{referral.referralNumber ?? '-'}</td>
+                              <td className="px-4 py-3">{getReferralName(referral)}</td>
+                              <td className="px-4 py-3">{formatDate(referral.entryDate)}</td>
+                              <td className="px-4 py-3">
+                                <select
+                                  value={draft.status || referral.status}
+                                  disabled={!isEditing}
+                                  onChange={(event) =>
+                                    handleReferralDraftChange(referral.id, { status: event.target.value })
+                                  }
+                                  className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm disabled:bg-gray-50"
+                                >
+                                  {referralStatusOptions.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td className="px-4 py-3">
+                                {referral.affiliate?.firstName} {referral.affiliate?.lastName}
+                              </td>
+                              <td className="px-4 py-3">
+                                <select
+                                  value={draft.paymentStatus || referral.paymentStatus}
+                                  disabled={!isEditing}
+                                  onChange={(event) =>
+                                    handleReferralDraftChange(referral.id, {
+                                      paymentStatus: event.target.value,
+                                    })
+                                  }
+                                  className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm disabled:bg-gray-50"
+                                >
+                                  {paymentStatusOptions.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </td>
+                              {visibleReferralColumns.email && (
+                                <td className="px-4 py-3">{getReferralEmail(referral) || '-'}</td>
+                              )}
+                              {visibleReferralColumns.phone && (
+                                <td className="px-4 py-3">{getReferralPhone(referral) || '-'}</td>
+                              )}
+                              {visibleReferralColumns.notes && (
+                                <td className="px-4 py-3">
+                                  {isEditing ? (
+                                    <input
+                                      value={draft.internalNotes ?? ''}
+                                      onChange={(event) =>
+                                        handleReferralDraftChange(referral.id, {
+                                          internalNotes: event.target.value,
+                                        })
+                                      }
+                                      className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm"
+                                    />
+                                  ) : (
+                                    <span>{referral.internalNotes || '–'}</span>
+                                  )}
+                                </td>
+                              )}
+                              <td className="px-4 py-3">
+                                <div className="flex flex-wrap gap-2">
+                                  {!isEditing ? (
+                                    <button
+                                      className="rounded-md border border-gray-200 px-3 py-1 text-xs font-medium text-gray-700 hover:border-gray-300"
+                                      onClick={() => setReferralEditingId(referral.id)}
+                                    >
+                                      Edit
+                                    </button>
+                                  ) : (
+                                    <button
+                                      className="rounded-md bg-[#2b36ff] px-3 py-1 text-xs font-semibold text-white hover:bg-[#2330f0]"
+                                      onClick={() =>
+                                        updateReferralMutation.mutate({
+                                          id: referral.id,
+                                          data: {
+                                            status: draft.status,
+                                            paymentStatus: draft.paymentStatus,
+                                            internalNotes: draft.internalNotes,
+                                          },
+                                        })
+                                      }
+                                    >
+                                      Save
+                                    </button>
+                                  )}
+                                  <button
+                                    className="rounded-md border border-red-200 px-3 py-1 text-xs font-medium text-red-600 hover:border-red-300"
+                                    onClick={() => {
+                                      const confirmed = window.confirm(
+                                        'Delete this referral? This will remove it from the list.'
+                                      )
+                                      if (confirmed) {
+                                        deleteReferralMutation.mutate(referral.id)
+                                      }
+                                    }}
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </div>

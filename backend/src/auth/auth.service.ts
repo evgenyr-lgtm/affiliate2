@@ -22,7 +22,7 @@ export class AuthService {
     private emailService: EmailService,
   ) {}
 
-  async register(registerDto: RegisterDto, recaptchaToken: string) {
+  async register(registerDto: RegisterDto) {
     // Check if user exists
     const existingUser = await this.prisma.user.findUnique({
       where: { email: registerDto.email },
@@ -35,11 +35,6 @@ export class AuthService {
     // Hash password
     const hashedPassword = await bcrypt.hash(registerDto.password, 10);
 
-    // Generate email verification token
-    const emailVerifyToken = uuidv4();
-    const emailVerifyExpires = new Date();
-    emailVerifyExpires.setHours(emailVerifyExpires.getHours() + 24);
-
     // Generate affiliate slug
     const slug = await this.generateAffiliateSlug(registerDto);
 
@@ -49,8 +44,7 @@ export class AuthService {
         email: registerDto.email,
         password: hashedPassword,
         role: UserRole.AFFILIATE,
-        emailVerifyToken,
-        emailVerifyExpires,
+        emailVerified: true,
         affiliate: {
           create: {
             slug,
@@ -66,9 +60,6 @@ export class AuthService {
       include: { affiliate: true },
     });
 
-    // Send verification email
-    await this.emailService.sendVerificationEmail(user.email, emailVerifyToken);
-
     // Send internal notification
     await this.emailService.sendNewAffiliateRegistration(user.affiliate!);
 
@@ -76,9 +67,22 @@ export class AuthService {
     // const zohoService = new ZohoService(this.configService);
     // await zohoService.createAffiliateTicket(user.affiliate!);
 
+    const tokens = await this.generateTokens(user.id, user.email, user.role);
+
     return {
-      message: 'Registration successful. Please check your email to verify your account.',
-      userId: user.id,
+      message: 'Registration successful',
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        affiliate: {
+          id: user.affiliate?.id,
+          slug: user.affiliate?.slug,
+          status: user.affiliate?.status,
+        },
+      },
     };
   }
 
