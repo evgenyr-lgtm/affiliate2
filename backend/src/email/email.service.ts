@@ -5,21 +5,27 @@ import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class EmailService {
-  private transporter: nodemailer.Transporter;
+  private transporter?: nodemailer.Transporter;
+  private isEnabled = false;
 
   constructor(
     private configService: ConfigService,
     private prisma: PrismaService,
   ) {
-    this.transporter = nodemailer.createTransport({
-      host: this.configService.get<string>('SMTP_HOST'),
-      port: this.configService.get<number>('SMTP_PORT'),
-      secure: false,
-      auth: {
-        user: this.configService.get<string>('SMTP_USER'),
-        pass: this.configService.get<string>('SMTP_PASS'),
-      },
-    });
+    const host = this.configService.get<string>('SMTP_HOST');
+    const port = this.configService.get<number>('SMTP_PORT');
+    const user = this.configService.get<string>('SMTP_USER');
+    const pass = this.configService.get<string>('SMTP_PASS');
+
+    if (host && port) {
+      this.isEnabled = true;
+      this.transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure: port === 465,
+        auth: user && pass ? { user, pass } : undefined,
+      });
+    }
   }
 
   async sendVerificationEmail(email: string, token: string) {
@@ -175,6 +181,10 @@ export class EmailService {
     subject: string;
     html: string;
   }) {
+    if (!this.isEnabled || !this.transporter) {
+      return;
+    }
+
     try {
       const from = this.configService.get<string>('SMTP_FROM') || 'noreply@accessfinancial.com';
       
