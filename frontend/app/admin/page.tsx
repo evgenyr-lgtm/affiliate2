@@ -456,7 +456,7 @@ export default function AdminPage() {
           {activeTab === 'affiliates' && (
             <div>
               <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <h2 className="text-2xl font-bold">Affiliates</h2>
+                <h2 className="text-2xl font-bold text-gray-900">Affiliates</h2>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -751,7 +751,7 @@ export default function AdminPage() {
           {activeTab === 'referrals' && (
             <div>
               <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <h2 className="text-2xl font-bold">Referrals</h2>
+                <h2 className="text-2xl font-bold text-gray-900">Referrals</h2>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -990,7 +990,7 @@ export default function AdminPage() {
 
           {activeTab === 'settings' && (
             <div>
-              <h2 className="text-2xl font-bold mb-4">Settings</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Settings</h2>
               <div className="bg-white shadow rounded-lg p-6">
                 <p className="text-gray-600">Settings management coming soon...</p>
               </div>
