@@ -186,8 +186,8 @@ export class EmailService {
       });
     } catch (error) {
       console.error('Email sending error:', error);
-      // In production, you might want to queue this for retry
-      throw error;
+      // Don't block user flows when SMTP is unavailable.
+      return;
     }
   }
 
