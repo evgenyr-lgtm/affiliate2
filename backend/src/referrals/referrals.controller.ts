@@ -19,7 +19,6 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole, ReferralStatus, PaymentStatus } from '@prisma/client';
-import { RecaptchaGuard } from '../auth/recaptcha/recaptcha.guard';
 
 @ApiTags('Referrals')
 @Controller('referrals')
@@ -27,7 +26,7 @@ export class ReferralsController {
   constructor(private readonly referralsService: ReferralsService) {}
 
   @Post('manual')
-  @UseGuards(JwtAuthGuard, RecaptchaGuard)
+  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create manual referral entry (authenticated affiliate)' })
   async createManualReferral(@Request() req, @Body() dto: CreateManualReferralDto) {
@@ -39,7 +38,6 @@ export class ReferralsController {
   }
 
   @Post('from-link')
-  @UseGuards(RecaptchaGuard)
   @ApiOperation({ summary: 'Create referral from affiliate link (public)' })
   async createReferralFromLink(
     @Body() dto: CreateManualReferralDto,

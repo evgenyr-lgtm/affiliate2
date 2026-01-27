@@ -39,9 +39,4 @@ export class RegisterDto {
     message: 'Password must contain at least one uppercase letter, one lowercase letter, and one number',
   })
   password: string;
-
-  @ApiProperty({ required: false, description: 'reCAPTCHA token (automatically handled by guard)' })
-  @IsOptional()
-  @IsString()
-  recaptchaToken?: string;
 }
