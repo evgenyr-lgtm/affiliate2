@@ -15,11 +15,8 @@ const profileSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
   phone: z.string().optional(),
-  email: z.string().email('Invalid email address'),
   companyName: z.string().optional(),
   jobTitle: z.string().optional(),
-  notifySystem: z.boolean().optional(),
-  notifyMarketing: z.boolean().optional(),
 })
 
 const passwordSchema = z
@@ -83,11 +80,8 @@ export default function SettingsPage() {
       firstName: affiliate.firstName || '',
       lastName: affiliate.lastName || '',
       phone: affiliate.phone || '',
-      email: email || '',
       companyName: affiliate.companyName || '',
       jobTitle: affiliate.jobTitle || '',
-      notifySystem: affiliate.notifySystem ?? true,
-      notifyMarketing: affiliate.notifyMarketing ?? true,
     },
   })
 
@@ -106,11 +100,8 @@ export default function SettingsPage() {
         firstName: affiliate.firstName || '',
         lastName: affiliate.lastName || '',
         phone: affiliate.phone || '',
-        email: affiliate.email || '',
         companyName: affiliate.companyName || '',
         jobTitle: affiliate.jobTitle || '',
-        notifySystem: affiliate.notifySystem ?? true,
-        notifyMarketing: affiliate.notifyMarketing ?? true,
       })
     }
   }, [affiliate, dashboardData, resetProfile])
@@ -325,9 +316,9 @@ export default function SettingsPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Email *</label>
                   <input
-                    {...registerProfile('email')}
-                    type="email"
-                    className="mt-2 block w-full rounded-full border-gray-300 px-4 py-3 text-sm text-gray-900 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                    value={email}
+                    readOnly
+                    className="mt-2 block w-full rounded-full border-gray-200 bg-gray-100 px-4 py-3 text-sm text-gray-700 opacity-10 cursor-not-allowed"
                   />
                 </div>
               </div>
@@ -434,21 +425,10 @@ export default function SettingsPage() {
           </section>
 
           <section className="bg-white shadow rounded-lg p-6 space-y-4">
-            <h2 className="text-xl font-semibold text-gray-900">Emails & Notifications</h2>
-            <label className="flex items-start gap-3 text-sm text-gray-700">
-              <input type="checkbox" {...registerProfile('notifySystem')} />
-              <span>I would like to receive important system notifications (e.g. referral status changes, important updates, etc.)</span>
-            </label>
-            <label className="flex items-start gap-3 text-sm text-gray-700">
-              <input type="checkbox" {...registerProfile('notifyMarketing')} />
-              <span>I would like to receive information about your products/services, news and offers.</span>
-            </label>
-            <button
-              className="rounded-full bg-[#2b36ff] px-6 py-2 text-sm font-semibold text-white"
-              onClick={handleProfileSubmit(onProfileSubmit)}
-            >
-              Save Changes
-            </button>
+            <h2 className="text-xl font-semibold text-gray-900">Notifications</h2>
+            <p className="text-sm text-gray-600">
+              Email notifications are disabled for this account.
+            </p>
           </section>
         </div>
       </main>

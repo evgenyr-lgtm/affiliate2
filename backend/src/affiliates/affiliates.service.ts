@@ -102,18 +102,9 @@ export class AffiliatesService {
       throw new NotFoundException('Affiliate not found');
     }
 
-    const { email, ...affiliateData } = updateDto;
-
-    if (email) {
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: { email },
-      });
-    }
-
     return this.prisma.affiliate.update({
       where: { userId },
-      data: affiliateData,
+      data: updateDto,
     });
   }
 
