@@ -50,6 +50,8 @@ export default function SettingsPage() {
   const [passwordOpen, setPasswordOpen] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [notifySystem, setNotifySystem] = useState(true)
+  const [notifyMarketing, setNotifyMarketing] = useState(true)
 
   useEffect(() => {
     const token = Cookies.get('accessToken')
@@ -104,6 +106,8 @@ export default function SettingsPage() {
         companyName: affiliate.companyName || '',
         jobTitle: affiliate.jobTitle || '',
       })
+      setNotifySystem(affiliate.notifySystem ?? true)
+      setNotifyMarketing(affiliate.notifyMarketing ?? true)
     }
   }, [affiliate, dashboardData, resetProfile])
 
@@ -130,6 +134,22 @@ export default function SettingsPage() {
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to change password')
+    },
+  })
+
+  const updateNotificationsMutation = useMutation({
+    mutationFn: async () => {
+      return api.put('/affiliate/profile', {
+        notifySystem,
+        notifyMarketing,
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      toast.success('Notification preferences updated')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update notifications')
     },
   })
 
@@ -464,10 +484,33 @@ export default function SettingsPage() {
           </section>
 
           <section className="bg-white shadow rounded-lg p-6 space-y-4">
-            <h2 className="text-xl font-semibold text-gray-900">Notifications</h2>
-            <p className="text-sm text-gray-600">
-              Email notifications are disabled for this account.
-            </p>
+            <h2 className="text-xl font-semibold text-gray-900">Emails & Notifications</h2>
+            <label className="flex items-start gap-3 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={notifySystem}
+                onChange={(event) => setNotifySystem(event.target.checked)}
+              />
+              <span>
+                I would like to receive important system notifications (e.g. referral status changes, important updates, etc.)
+              </span>
+            </label>
+            <label className="flex items-start gap-3 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={notifyMarketing}
+                onChange={(event) => setNotifyMarketing(event.target.checked)}
+              />
+              <span>
+                I would like to receive information about your products/services, news and offers.
+              </span>
+            </label>
+            <button
+              className="rounded-full bg-[#2b36ff] px-6 py-2 text-sm font-semibold text-white"
+              onClick={() => updateNotificationsMutation.mutate()}
+            >
+              Save Changes
+            </button>
           </section>
         </div>
       </main>
