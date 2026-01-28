@@ -29,6 +29,11 @@ export class UpdateAffiliateDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
+  @IsString()
+  email?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsBoolean()
   notifySystem?: boolean;
 

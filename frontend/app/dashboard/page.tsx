@@ -186,9 +186,19 @@ export default function DashboardPage() {
       <nav className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
-              <Image src="/af-logo-short-dark.svg" alt="Access Financial" width={120} height={60} />
-            </div>
+            <button
+              type="button"
+              onClick={() => router.push('/dashboard')}
+              className="flex items-center gap-3"
+            >
+              <Image
+                src="/af-logo-short-dark.svg"
+                alt="Access Financial"
+                width={96}
+                height={40}
+                className="h-8 w-auto"
+              />
+            </button>
             <button
               type="button"
               onClick={() => router.push('/marketing-materials')}

@@ -15,6 +15,7 @@ const profileSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
   phone: z.string().min(1, 'Phone is required'),
+  email: z.string().email('Invalid email address'),
   companyName: z.string().optional(),
   jobTitle: z.string().optional(),
   notifySystem: z.boolean().optional(),
@@ -82,6 +83,7 @@ export default function SettingsPage() {
       firstName: affiliate.firstName || '',
       lastName: affiliate.lastName || '',
       phone: affiliate.phone || '',
+      email: email || '',
       companyName: affiliate.companyName || '',
       jobTitle: affiliate.jobTitle || '',
       notifySystem: affiliate.notifySystem ?? true,
@@ -99,18 +101,19 @@ export default function SettingsPage() {
   })
 
   useEffect(() => {
-    if (affiliate?.firstName) {
+    if (dashboardData?.affiliate) {
       resetProfile({
         firstName: affiliate.firstName || '',
         lastName: affiliate.lastName || '',
         phone: affiliate.phone || '',
+        email: affiliate.email || '',
         companyName: affiliate.companyName || '',
         jobTitle: affiliate.jobTitle || '',
         notifySystem: affiliate.notifySystem ?? true,
         notifyMarketing: affiliate.notifyMarketing ?? true,
       })
     }
-  }, [affiliate, resetProfile])
+  }, [affiliate, dashboardData, resetProfile])
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: ProfileForm) => {
@@ -196,34 +199,52 @@ export default function SettingsPage() {
       <nav className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
-              <Image src="/af-logo-short-dark.svg" alt="Access Financial" width={120} height={60} />
-            </div>
-            <div className="flex items-center gap-4 text-sm">
-              <button
-                onClick={() => router.push('/dashboard')}
-                className="text-gray-600 hover:text-gray-900"
-              >
-                Dashboard
-              </button>
-              <button
-                onClick={() => {
-                  Cookies.remove('accessToken')
-                  Cookies.remove('refreshToken')
-                  router.push('/login')
-                }}
-                className="text-gray-600 hover:text-gray-900"
-              >
-                Logout
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => router.push('/dashboard')}
+              className="flex items-center gap-3"
+            >
+              <Image
+                src="/af-logo-short-dark.svg"
+                alt="Access Financial"
+                width={96}
+                height={40}
+                className="h-8 w-auto"
+              />
+            </button>
+            <button
+              onClick={() => {
+                Cookies.remove('accessToken')
+                Cookies.remove('refreshToken')
+                router.push('/login')
+              }}
+              className="text-sm text-gray-600 hover:text-gray-900"
+            >
+              Logout
+            </button>
           </div>
         </div>
       </nav>
 
       <main className="max-w-4xl mx-auto py-8 sm:px-6 lg:px-8">
         <div className="px-4 sm:px-0 space-y-8">
-          <h1 className="text-2xl font-semibold text-gray-900">Account Settings</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-semibold text-gray-900">Account Settings</h1>
+            <button
+              type="button"
+              onClick={() => router.push('/dashboard')}
+              className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:border-gray-300"
+            >
+              Back to Dashboard
+              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fillRule="evenodd"
+                  d="M7.21 14.77a.75.75 0 0 1 .02-1.06L10.168 10 7.23 7.29a.75.75 0 0 1 1.04-1.08l3.5 3.24a.75.75 0 0 1 0 1.1l-3.5 3.24a.75.75 0 0 1-1.06-.02Z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+          </div>
 
           <section className="bg-white shadow rounded-lg p-6 space-y-6">
             <h2 className="text-xl font-semibold text-gray-900">Account Details</h2>
@@ -251,7 +272,7 @@ export default function SettingsPage() {
                   <input
                     {...registerProfile('firstName')}
                     type="text"
-                    className="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                    className="mt-2 block w-full rounded-full border-gray-300 px-4 py-3 text-sm text-gray-900 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                   />
                   {profileErrors.firstName && (
                     <p className="mt-1 text-sm text-red-600">{profileErrors.firstName.message}</p>
@@ -262,7 +283,7 @@ export default function SettingsPage() {
                   <input
                     {...registerProfile('lastName')}
                     type="text"
-                    className="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                    className="mt-2 block w-full rounded-full border-gray-300 px-4 py-3 text-sm text-gray-900 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                   />
                   {profileErrors.lastName && (
                     <p className="mt-1 text-sm text-red-600">{profileErrors.lastName.message}</p>
@@ -276,7 +297,7 @@ export default function SettingsPage() {
                   <input
                     {...registerProfile('companyName')}
                     type="text"
-                    className="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                    className="mt-2 block w-full rounded-full border-gray-300 px-4 py-3 text-sm text-gray-900 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                   />
                 </div>
                 <div>
@@ -284,7 +305,7 @@ export default function SettingsPage() {
                   <input
                     {...registerProfile('jobTitle')}
                     type="text"
-                    className="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                    className="mt-2 block w-full rounded-full border-gray-300 px-4 py-3 text-sm text-gray-900 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                   />
                 </div>
               </div>
@@ -295,7 +316,7 @@ export default function SettingsPage() {
                   <input
                     {...registerProfile('phone')}
                     type="tel"
-                    className="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                    className="mt-2 block w-full rounded-full border-gray-300 px-4 py-3 text-sm text-gray-900 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                   />
                   {profileErrors.phone && (
                     <p className="mt-1 text-sm text-red-600">{profileErrors.phone.message}</p>
@@ -304,9 +325,9 @@ export default function SettingsPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Email</label>
                   <input
-                    value={email}
-                    readOnly
-                    className="mt-2 block w-full rounded-md border-gray-200 bg-gray-100 text-gray-500 opacity-70"
+                    {...registerProfile('email')}
+                    type="email"
+                    className="mt-2 block w-full rounded-full border-gray-300 px-4 py-3 text-sm text-gray-900 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                   />
                 </div>
               </div>
@@ -338,7 +359,7 @@ export default function SettingsPage() {
                   <input
                     {...registerPassword('oldPassword')}
                     type="password"
-                    className="mt-2 block w-full rounded-md border-gray-300 shadow-sm"
+                    className="mt-2 block w-full rounded-full border-gray-300 px-4 py-3 text-sm text-gray-900 shadow-sm"
                   />
                   {passwordErrors.oldPassword && (
                     <p className="mt-1 text-sm text-red-600">{passwordErrors.oldPassword.message}</p>
@@ -349,7 +370,7 @@ export default function SettingsPage() {
                   <input
                     {...registerPassword('newPassword')}
                     type="password"
-                    className="mt-2 block w-full rounded-md border-gray-300 shadow-sm"
+                    className="mt-2 block w-full rounded-full border-gray-300 px-4 py-3 text-sm text-gray-900 shadow-sm"
                   />
                   {passwordErrors.newPassword && (
                     <p className="mt-1 text-sm text-red-600">{passwordErrors.newPassword.message}</p>
@@ -360,7 +381,7 @@ export default function SettingsPage() {
                   <input
                     {...registerPassword('confirmPassword')}
                     type="password"
-                    className="mt-2 block w-full rounded-md border-gray-300 shadow-sm"
+                    className="mt-2 block w-full rounded-full border-gray-300 px-4 py-3 text-sm text-gray-900 shadow-sm"
                   />
                   {passwordErrors.confirmPassword && (
                     <p className="mt-1 text-sm text-red-600">
