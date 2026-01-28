@@ -142,13 +142,30 @@ export default function LoginPage() {
               }}
             >
               <div className="absolute inset-0 opacity-30">
-                <div className="absolute -right-16 -top-24 h-72 w-72 rounded-full bg-white/20 blur-2xl" />
-                <div className="absolute -right-8 bottom-10 h-80 w-80 rounded-full bg-white/10 blur-3xl" />
+                <div className="absolute -right-16 -top-24 h-72 w-72 rounded-full bg-white/20 blur-2xl animate-float-slow" />
+                <div className="absolute -right-8 bottom-10 h-80 w-80 rounded-full bg-white/10 blur-3xl animate-float-fast" />
               </div>
             </div>
           </div>
         </div>
       </div>
+      <style jsx>{`
+        @keyframes float {
+          0%,
+          100% {
+            transform: translateY(0) scale(1);
+          }
+          50% {
+            transform: translateY(-10px) scale(1.02);
+          }
+        }
+        .animate-float-slow {
+          animation: float 10s ease-in-out infinite;
+        }
+        .animate-float-fast {
+          animation: float 8s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   )
 }

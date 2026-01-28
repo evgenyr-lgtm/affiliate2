@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import Image from 'next/image'
@@ -28,14 +28,15 @@ const getPasswordStrength = (password: string): PasswordStrength => {
 
 const registerSchema = z
   .object({
-    accountType: z.enum(['individual', 'company']),
+    accountType: z.enum(['individual', 'company']).optional(),
     firstName: z.string().min(1, 'First name is required'),
     lastName: z.string().min(1, 'Last name is required'),
     companyName: z.string().optional(),
+    jobTitle: z.string().optional(),
     email: z.string().email('Invalid email address'),
-    phone: z.string().min(1, 'Phone is required'),
+    phone: z.string().optional(),
     password: z.string().min(8, 'Password must be at least 8 characters'),
-    confirmPassword: z.string().min(1, 'Repeat password is required'),
+    confirmPassword: z.string().min(1, 'Reset password is required'),
   })
   .superRefine((data, ctx) => {
     if (data.password !== data.confirmPassword) {
@@ -58,14 +59,28 @@ const registerSchema = z
 
 type RegisterForm = z.infer<typeof registerSchema>
 
+const phoneCountries = [
+  { code: 'US', name: 'United States', dial: '+1', flag: '🇺🇸' },
+  { code: 'CA', name: 'Canada', dial: '+1', flag: '🇨🇦' },
+  { code: 'GB', name: 'United Kingdom', dial: '+44', flag: '🇬🇧' },
+  { code: 'DE', name: 'Germany', dial: '+49', flag: '🇩🇪' },
+  { code: 'FR', name: 'France', dial: '+33', flag: '🇫🇷' },
+  { code: 'AE', name: 'United Arab Emirates', dial: '+971', flag: '🇦🇪' },
+  { code: 'RU', name: 'Russia', dial: '+7', flag: '🇷🇺' },
+  { code: 'AU', name: 'Australia', dial: '+61', flag: '🇦🇺' },
+]
+
 export default function RegisterPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [phoneCountry, setPhoneCountry] = useState(phoneCountries[0])
+  const [phoneNumber, setPhoneNumber] = useState('')
 
   const {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
@@ -78,11 +93,21 @@ export default function RegisterPage() {
   const passwordValue = watch('password') || ''
   const passwordStrength = passwordValue ? getPasswordStrength(passwordValue) : null
 
+  useEffect(() => {
+    const trimmed = phoneNumber.trim()
+    setValue('phone', trimmed ? `${phoneCountry.dial} ${trimmed}` : '')
+  }, [phoneCountry, phoneNumber, setValue])
+
   const onSubmit = async (data: RegisterForm) => {
     setIsLoading(true)
     try {
-      const { confirmPassword, ...payload } = data
-      const response = await api.post('/auth/register', payload)
+      const { confirmPassword, phone, accountType: typeFromForm, ...payload } = data
+      const phoneValue = phone?.trim()
+      const response = await api.post('/auth/register', {
+        ...payload,
+        accountType: typeFromForm || 'individual',
+        phone: phoneValue || undefined,
+      })
       const { accessToken, refreshToken, user } = response.data
 
       Cookies.set('accessToken', accessToken)
@@ -128,13 +153,26 @@ export default function RegisterPage() {
                   <label className="block text-sm font-medium text-gray-600">
                     Account Type
                   </label>
-                  <select
-                    {...register('accountType')}
-                    className="mt-2 block w-full rounded-full border border-gray-200 bg-white px-4 py-3 pr-10 text-sm text-gray-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
-                  >
-                    <option value="individual">Individual</option>
-                    <option value="company">Company</option>
-                  </select>
+                  <div className="relative">
+                    <select
+                      {...register('accountType')}
+                      className="mt-2 block w-full appearance-none rounded-full border border-gray-200 bg-white px-4 py-3 pr-12 text-sm text-gray-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+                    >
+                      <option value="individual">Individual</option>
+                      <option value="company">Company</option>
+                    </select>
+                    <svg
+                      className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.24 4.5a.75.75 0 0 1-1.08 0l-4.24-4.5a.75.75 0 0 1 .02-1.06Z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -168,15 +206,27 @@ export default function RegisterPage() {
                 </div>
 
                 {accountType === 'company' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600">
-                      Company Name
-                    </label>
-                    <input
-                      {...register('companyName')}
-                      type="text"
-                      className="mt-2 block w-full rounded-full border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
-                    />
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600">
+                        Company Name
+                      </label>
+                      <input
+                        {...register('companyName')}
+                        type="text"
+                        className="mt-2 block w-full rounded-full border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600">
+                        Job Title
+                      </label>
+                      <input
+                        {...register('jobTitle')}
+                        type="text"
+                        className="mt-2 block w-full rounded-full border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+                      />
+                    </div>
                   </div>
                 )}
 
@@ -196,16 +246,48 @@ export default function RegisterPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-600">
-                    Phone *
+                    Phone
                   </label>
-                  <input
-                    {...register('phone')}
-                    type="tel"
-                    className="mt-2 block w-full rounded-full border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
-                  />
-                  {errors.phone && (
-                    <p className="mt-1 text-sm text-red-600">{errors.phone.message}</p>
-                  )}
+                  <input {...register('phone')} type="hidden" />
+                  <div className="mt-2 flex w-full items-center rounded-full border border-gray-200 bg-white shadow-sm focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-200">
+                    <div className="relative">
+                      <select
+                        value={phoneCountry.code}
+                        onChange={(event) => {
+                          const next = phoneCountries.find(
+                            (item) => item.code === event.target.value
+                          )
+                          if (next) setPhoneCountry(next)
+                        }}
+                        className="h-full appearance-none bg-transparent py-3 pl-4 pr-8 text-sm text-gray-900 focus:outline-none"
+                      >
+                        {phoneCountries.map((item) => (
+                          <option key={item.code} value={item.code}>
+                            {item.flag} {item.name} ({item.dial})
+                          </option>
+                        ))}
+                      </select>
+                      <svg
+                        className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.24 4.5a.75.75 0 0 1-1.08 0l-4.24-4.5a.75.75 0 0 1 .02-1.06Z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                    <div className="h-6 w-px bg-gray-200" />
+                    <input
+                      type="tel"
+                      value={phoneNumber}
+                      onChange={(event) => setPhoneNumber(event.target.value)}
+                      placeholder="Phone number"
+                      className="flex-1 bg-transparent px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -238,7 +320,7 @@ export default function RegisterPage() {
                 {passwordValue.length > 0 && (
                   <div>
                     <label className="block text-sm font-medium text-gray-600">
-                      Repeat password *
+                      Reset Password *
                     </label>
                     <input
                       {...register('confirmPassword')}
@@ -280,13 +362,30 @@ export default function RegisterPage() {
               }}
             >
               <div className="absolute inset-0 opacity-30">
-                <div className="absolute -right-16 -top-24 h-72 w-72 rounded-full bg-white/20 blur-2xl" />
-                <div className="absolute -right-8 bottom-10 h-80 w-80 rounded-full bg-white/10 blur-3xl" />
+                <div className="absolute -right-16 -top-24 h-72 w-72 rounded-full bg-white/20 blur-2xl animate-float-slow" />
+                <div className="absolute -right-8 bottom-10 h-80 w-80 rounded-full bg-white/10 blur-3xl animate-float-fast" />
               </div>
             </div>
           </div>
         </div>
       </div>
+      <style jsx>{`
+        @keyframes float {
+          0%,
+          100% {
+            transform: translateY(0) scale(1);
+          }
+          50% {
+            transform: translateY(-10px) scale(1.02);
+          }
+        }
+        .animate-float-slow {
+          animation: float 10s ease-in-out infinite;
+        }
+        .animate-float-fast {
+          animation: float 8s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   )
 }
