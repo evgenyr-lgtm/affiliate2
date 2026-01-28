@@ -38,6 +38,7 @@ const buildShareLinks = (url: string) => ({
 export default function MarketingMaterialsPage() {
   const router = useRouter()
   const [openShareId, setOpenShareId] = useState<string | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
     const token = Cookies.get('accessToken')
@@ -45,6 +46,14 @@ export default function MarketingMaterialsPage() {
       router.push('/login')
     }
   }, [router])
+
+  const { data: dashboardData } = useQuery({
+    queryKey: ['dashboard'],
+    queryFn: async () => {
+      const response = await api.get('/affiliate/dashboard')
+      return response.data
+    },
+  })
 
   const { data, isLoading } = useQuery({
     queryKey: ['marketing-materials'],
@@ -54,6 +63,7 @@ export default function MarketingMaterialsPage() {
     },
   })
 
+  const affiliate = dashboardData?.affiliate || {}
   const documents: DocumentRow[] = data || []
   const baseUrl = getBackendBaseUrl()
 
@@ -75,16 +85,54 @@ export default function MarketingMaterialsPage() {
                 className="h-8 w-auto"
               />
             </button>
-            <button
-              onClick={() => {
-                Cookies.remove('accessToken')
-                Cookies.remove('refreshToken')
-                router.push('/login')
-              }}
-              className="text-sm text-gray-600 hover:text-gray-900"
-            >
-              Logout
-            </button>
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen((prev) => !prev)}
+                  className="flex items-center gap-2 text-sm font-semibold text-gray-700"
+                >
+                  {affiliate.avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`${baseUrl}${affiliate.avatar}`}
+                      alt="Profile"
+                      className="h-8 w-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500" />
+                  )}
+                  <span>Welcome, {affiliate.firstName || 'Affiliate'}!</span>
+                  <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path
+                      fillRule="evenodd"
+                      d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.24 4.5a.75.75 0 0 1-1.08 0l-4.24-4.5a.75.75 0 0 1 .02-1.06Z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+                {menuOpen && (
+                  <div className="absolute right-0 mt-2 w-40 rounded-md border border-gray-200 bg-white shadow-lg">
+                    <button
+                      className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                      onClick={() => router.push('/settings')}
+                    >
+                      Account Settings
+                    </button>
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  Cookies.remove('accessToken')
+                  Cookies.remove('refreshToken')
+                  router.push('/login')
+                }}
+                className="text-sm text-gray-600 hover:text-gray-900"
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </nav>
