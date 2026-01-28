@@ -1,14 +1,15 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { useRouter } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Cookies from 'js-cookie'
 import Image from 'next/image'
 import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import toast from 'react-hot-toast'
 
 type ReferralRow = {
   id: string
@@ -79,6 +80,7 @@ const getBackendBaseUrl = () => {
 
 export default function DashboardPage() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [menuOpen, setMenuOpen] = useState(false)
   const [step, setStep] = useState<1 | 2>(1)
   const [referralType, setReferralType] = useState<'individual' | 'company'>('individual')
@@ -89,6 +91,28 @@ export default function DashboardPage() {
     phone: false,
     companyName: false,
   })
+  const [referralForm, setReferralForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    contractDuration: '',
+    workCountry: '',
+    nationality: '',
+    maritalStatus: '',
+    notes: '',
+    companyName: '',
+    country: '',
+    contactFirstName: '',
+    contactLastName: '',
+    contactEmail: '',
+    contactPhone: '',
+    jobTitle: '',
+    linkedin: '',
+  })
+  const profileMenuRef = useRef<HTMLDivElement | null>(null)
+  const exportMenuRef = useRef<HTMLDivElement | null>(null)
+  const filterMenuRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     const token = Cookies.get('accessToken')
@@ -96,6 +120,24 @@ export default function DashboardPage() {
       router.push('/login')
     }
   }, [router])
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node
+      if (menuOpen && profileMenuRef.current && !profileMenuRef.current.contains(target)) {
+        setMenuOpen(false)
+      }
+      if (exportMenuOpen && exportMenuRef.current && !exportMenuRef.current.contains(target)) {
+        setExportMenuOpen(false)
+      }
+      if (showFilters && filterMenuRef.current && !filterMenuRef.current.contains(target)) {
+        setShowFilters(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [menuOpen, exportMenuOpen, showFilters])
 
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard'],
@@ -124,6 +166,72 @@ export default function DashboardPage() {
       'Company Name': referral.companyName || '',
     }))
   }, [referralRows, affiliateData])
+
+  const manualReferralMutation = useMutation({
+    mutationFn: async () => {
+      const payload =
+        referralType === 'individual'
+          ? {
+              accountType: 'individual',
+              firstName: referralForm.firstName,
+              lastName: referralForm.lastName || undefined,
+              email: referralForm.email,
+              phone: referralForm.phone || undefined,
+              contractDuration: referralForm.contractDuration || undefined,
+              workCountry: referralForm.workCountry || undefined,
+              nationality: referralForm.nationality || undefined,
+              maritalStatus: referralForm.maritalStatus || undefined,
+              notes: referralForm.notes || undefined,
+            }
+          : {
+              accountType: 'company',
+              companyName: referralForm.companyName || undefined,
+              country: referralForm.country || undefined,
+              contactFirstName: referralForm.contactFirstName,
+              contactLastName: referralForm.contactLastName || undefined,
+              contactEmail: referralForm.contactEmail,
+              contactPhone: referralForm.contactPhone || undefined,
+              jobTitle: referralForm.jobTitle || undefined,
+              linkedin: referralForm.linkedin || undefined,
+              notes: referralForm.notes || undefined,
+            }
+
+      return api.post('/referrals/manual', payload)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      toast.success('Referral submitted successfully')
+      setReferralForm({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        contractDuration: '',
+        workCountry: '',
+        nationality: '',
+        maritalStatus: '',
+        notes: '',
+        companyName: '',
+        country: '',
+        contactFirstName: '',
+        contactLastName: '',
+        contactEmail: '',
+        contactPhone: '',
+        jobTitle: '',
+        linkedin: '',
+      })
+      setStep(1)
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to submit referral')
+    },
+  })
+
+  const isManualSubmitDisabled =
+    manualReferralMutation.isPending ||
+    (referralType === 'individual'
+      ? !referralForm.firstName || !referralForm.email
+      : !referralForm.contactFirstName || !referralForm.contactEmail)
 
   if (isLoading) {
     return <div className="p-8">Loading...</div>
@@ -194,8 +302,8 @@ export default function DashboardPage() {
               <Image
                 src="/af-logo-short-dark.svg"
                 alt="Access Financial"
-                width={96}
-                height={40}
+                width={88}
+                height={36}
                 className="h-8 w-auto"
               />
             </button>
@@ -215,7 +323,7 @@ export default function DashboardPage() {
               Marketing Materials
             </button>
             <div className="flex items-center gap-4">
-              <div className="relative">
+              <div className="relative" ref={profileMenuRef}>
                 <button
                   type="button"
                   onClick={() => setMenuOpen((prev) => !prev)}
@@ -335,7 +443,7 @@ export default function DashboardPage() {
                     <input
                       readOnly
                       value={`${affiliateData.firstName || ''} ${affiliateData.lastName || ''}`.trim()}
-                      className="mt-2 w-full rounded-full border border-gray-200 bg-gray-100 px-4 py-3 text-sm text-gray-700"
+                      className="mt-2 w-full rounded-full border border-gray-200 bg-gray-100 px-4 py-3 text-sm text-gray-900"
                     />
                   </div>
                   <div>
@@ -343,7 +451,7 @@ export default function DashboardPage() {
                     <input
                       readOnly
                       value={affiliateData.email || ''}
-                      className="mt-2 w-full rounded-full border border-gray-200 bg-gray-100 px-4 py-3 text-sm text-gray-700"
+                      className="mt-2 w-full rounded-full border border-gray-200 bg-gray-100 px-4 py-3 text-sm text-gray-900"
                     />
                   </div>
                 </div>
@@ -352,31 +460,159 @@ export default function DashboardPage() {
                   <div className="space-y-4">
                     <h3 className="text-sm font-semibold text-gray-800">Referral Information</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <input className="rounded-full border border-gray-200 px-4 py-3 text-sm" placeholder="First Name*" />
-                      <input className="rounded-full border border-gray-200 px-4 py-3 text-sm" placeholder="Last Name" />
-                      <input className="rounded-full border border-gray-200 px-4 py-3 text-sm" placeholder="Email*" />
-                      <input className="rounded-full border border-gray-200 px-4 py-3 text-sm" placeholder="Phone" />
-                      <input className="rounded-full border border-gray-200 px-4 py-3 text-sm" placeholder="Contract duration (if known)" />
-                      <input className="rounded-full border border-gray-200 px-4 py-3 text-sm" placeholder="Work country (if known)" />
-                      <input className="rounded-full border border-gray-200 px-4 py-3 text-sm" placeholder="Nationality (if known)" />
-                      <input className="rounded-full border border-gray-200 px-4 py-3 text-sm" placeholder="Marital status (if known)" />
+                      <input
+                        value={referralForm.firstName}
+                        onChange={(event) =>
+                          setReferralForm((prev) => ({ ...prev, firstName: event.target.value }))
+                        }
+                        className="rounded-full border border-gray-200 px-4 py-3 text-sm text-gray-900"
+                        placeholder="First Name*"
+                      />
+                      <input
+                        value={referralForm.lastName}
+                        onChange={(event) =>
+                          setReferralForm((prev) => ({ ...prev, lastName: event.target.value }))
+                        }
+                        className="rounded-full border border-gray-200 px-4 py-3 text-sm text-gray-900"
+                        placeholder="Last Name"
+                      />
+                      <input
+                        value={referralForm.email}
+                        onChange={(event) =>
+                          setReferralForm((prev) => ({ ...prev, email: event.target.value }))
+                        }
+                        className="rounded-full border border-gray-200 px-4 py-3 text-sm text-gray-900"
+                        placeholder="Email*"
+                      />
+                      <input
+                        value={referralForm.phone}
+                        onChange={(event) =>
+                          setReferralForm((prev) => ({ ...prev, phone: event.target.value }))
+                        }
+                        className="rounded-full border border-gray-200 px-4 py-3 text-sm text-gray-900"
+                        placeholder="Phone"
+                      />
+                      <input
+                        value={referralForm.contractDuration}
+                        onChange={(event) =>
+                          setReferralForm((prev) => ({ ...prev, contractDuration: event.target.value }))
+                        }
+                        className="rounded-full border border-gray-200 px-4 py-3 text-sm text-gray-900"
+                        placeholder="Contract duration (if known)"
+                      />
+                      <input
+                        value={referralForm.workCountry}
+                        onChange={(event) =>
+                          setReferralForm((prev) => ({ ...prev, workCountry: event.target.value }))
+                        }
+                        className="rounded-full border border-gray-200 px-4 py-3 text-sm text-gray-900"
+                        placeholder="Work country (if known)"
+                      />
+                      <input
+                        value={referralForm.nationality}
+                        onChange={(event) =>
+                          setReferralForm((prev) => ({ ...prev, nationality: event.target.value }))
+                        }
+                        className="rounded-full border border-gray-200 px-4 py-3 text-sm text-gray-900"
+                        placeholder="Nationality (if known)"
+                      />
+                      <input
+                        value={referralForm.maritalStatus}
+                        onChange={(event) =>
+                          setReferralForm((prev) => ({ ...prev, maritalStatus: event.target.value }))
+                        }
+                        className="rounded-full border border-gray-200 px-4 py-3 text-sm text-gray-900"
+                        placeholder="Marital status (if known)"
+                      />
                     </div>
-                    <textarea className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm" rows={4} placeholder="Additional information" />
+                    <textarea
+                      value={referralForm.notes}
+                      onChange={(event) =>
+                        setReferralForm((prev) => ({ ...prev, notes: event.target.value }))
+                      }
+                      className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-900"
+                      rows={4}
+                      placeholder="Additional information"
+                    />
                   </div>
                 ) : (
                   <div className="space-y-4">
                     <h3 className="text-sm font-semibold text-gray-800">Referral Information</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <input className="rounded-full border border-gray-200 px-4 py-3 text-sm" placeholder="Company Name" />
-                      <input className="rounded-full border border-gray-200 px-4 py-3 text-sm" placeholder="Country" />
-                      <input className="rounded-full border border-gray-200 px-4 py-3 text-sm" placeholder="First Name*" />
-                      <input className="rounded-full border border-gray-200 px-4 py-3 text-sm" placeholder="Last Name" />
-                      <input className="rounded-full border border-gray-200 px-4 py-3 text-sm" placeholder="Job title" />
-                      <input className="rounded-full border border-gray-200 px-4 py-3 text-sm" placeholder="Email*" />
-                      <input className="rounded-full border border-gray-200 px-4 py-3 text-sm" placeholder="Phone" />
-                      <input className="rounded-full border border-gray-200 px-4 py-3 text-sm" placeholder="LinkedIn profile (if known)" />
+                      <input
+                        value={referralForm.companyName}
+                        onChange={(event) =>
+                          setReferralForm((prev) => ({ ...prev, companyName: event.target.value }))
+                        }
+                        className="rounded-full border border-gray-200 px-4 py-3 text-sm text-gray-900"
+                        placeholder="Company Name"
+                      />
+                      <input
+                        value={referralForm.country}
+                        onChange={(event) =>
+                          setReferralForm((prev) => ({ ...prev, country: event.target.value }))
+                        }
+                        className="rounded-full border border-gray-200 px-4 py-3 text-sm text-gray-900"
+                        placeholder="Country"
+                      />
+                      <input
+                        value={referralForm.contactFirstName}
+                        onChange={(event) =>
+                          setReferralForm((prev) => ({ ...prev, contactFirstName: event.target.value }))
+                        }
+                        className="rounded-full border border-gray-200 px-4 py-3 text-sm text-gray-900"
+                        placeholder="First Name*"
+                      />
+                      <input
+                        value={referralForm.contactLastName}
+                        onChange={(event) =>
+                          setReferralForm((prev) => ({ ...prev, contactLastName: event.target.value }))
+                        }
+                        className="rounded-full border border-gray-200 px-4 py-3 text-sm text-gray-900"
+                        placeholder="Last Name"
+                      />
+                      <input
+                        value={referralForm.jobTitle}
+                        onChange={(event) =>
+                          setReferralForm((prev) => ({ ...prev, jobTitle: event.target.value }))
+                        }
+                        className="rounded-full border border-gray-200 px-4 py-3 text-sm text-gray-900"
+                        placeholder="Job title"
+                      />
+                      <input
+                        value={referralForm.contactEmail}
+                        onChange={(event) =>
+                          setReferralForm((prev) => ({ ...prev, contactEmail: event.target.value }))
+                        }
+                        className="rounded-full border border-gray-200 px-4 py-3 text-sm text-gray-900"
+                        placeholder="Email*"
+                      />
+                      <input
+                        value={referralForm.contactPhone}
+                        onChange={(event) =>
+                          setReferralForm((prev) => ({ ...prev, contactPhone: event.target.value }))
+                        }
+                        className="rounded-full border border-gray-200 px-4 py-3 text-sm text-gray-900"
+                        placeholder="Phone"
+                      />
+                      <input
+                        value={referralForm.linkedin}
+                        onChange={(event) =>
+                          setReferralForm((prev) => ({ ...prev, linkedin: event.target.value }))
+                        }
+                        className="rounded-full border border-gray-200 px-4 py-3 text-sm text-gray-900"
+                        placeholder="LinkedIn profile (if known)"
+                      />
                     </div>
-                    <textarea className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm" rows={4} placeholder="Additional information" />
+                    <textarea
+                      value={referralForm.notes}
+                      onChange={(event) =>
+                        setReferralForm((prev) => ({ ...prev, notes: event.target.value }))
+                      }
+                      className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-900"
+                      rows={4}
+                      placeholder="Additional information"
+                    />
                   </div>
                 )}
 
@@ -390,8 +626,11 @@ export default function DashboardPage() {
                   </button>
                   <button
                     type="button"
-                    disabled
-                    className="rounded-full bg-gray-300 px-6 py-2 text-sm font-semibold text-white"
+                    disabled={isManualSubmitDisabled}
+                    onClick={() => manualReferralMutation.mutate()}
+                    className={`rounded-full px-6 py-2 text-sm font-semibold text-white ${
+                      isManualSubmitDisabled ? 'bg-gray-300' : 'bg-[#2b36ff] hover:bg-[#2330f0]'
+                    }`}
                   >
                     Send Referral
                   </button>
@@ -404,17 +643,46 @@ export default function DashboardPage() {
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
               <h2 className="text-xl font-semibold text-gray-900">Referrals</h2>
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowFilters((prev) => !prev)}
-                  className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 shadow-sm hover:border-gray-300"
-                >
-                  <span>Filters</span>
-                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-gray-500">
-                    <path d="M3 4h14v2H3V4zm2 5h10v2H5V9zm3 5h4v2H8v-2z" />
-                  </svg>
-                </button>
-                <div className="relative">
+                <div className="relative" ref={filterMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setShowFilters((prev) => !prev)}
+                    className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 shadow-sm hover:border-gray-300"
+                  >
+                    <span>Filters</span>
+                    <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-gray-500">
+                      <path d="M3 4h14v2H3V4zm2 5h10v2H5V9zm3 5h4v2H8v-2z" />
+                    </svg>
+                  </button>
+                  {showFilters && (
+                    <div className="absolute right-0 mt-2 w-64 rounded-md border border-gray-200 bg-white p-4 shadow-lg">
+                      <p className="text-sm font-medium text-gray-700 mb-2">Additional fields</p>
+                      <div className="grid grid-cols-1 gap-2">
+                        {[
+                          { key: 'email', label: 'Referral email' },
+                          { key: 'phone', label: 'Phone number' },
+                          { key: 'companyName', label: 'Company name' },
+                        ].map((field) => (
+                          <label key={field.key} className="flex items-center gap-2 text-sm text-gray-600">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 rounded border-gray-300"
+                              checked={(visibleColumns as any)[field.key]}
+                              onChange={(event) =>
+                                setVisibleColumns((prev) => ({
+                                  ...prev,
+                                  [field.key]: event.target.checked,
+                                }))
+                              }
+                            />
+                            {field.label}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="relative" ref={exportMenuRef}>
                   <button
                     type="button"
                     onClick={() => setExportMenuOpen((prev) => !prev)}
@@ -441,34 +709,6 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
-
-            {showFilters && (
-              <div className="mb-4 rounded-md border border-gray-200 bg-white p-4">
-                <p className="text-sm font-medium text-gray-700 mb-2">Additional fields</p>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {[
-                    { key: 'email', label: 'Referral email' },
-                    { key: 'phone', label: 'Phone number' },
-                    { key: 'companyName', label: 'Company name' },
-                  ].map((field) => (
-                    <label key={field.key} className="flex items-center gap-2 text-sm text-gray-600">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-gray-300"
-                        checked={(visibleColumns as any)[field.key]}
-                        onChange={(event) =>
-                          setVisibleColumns((prev) => ({
-                            ...prev,
-                            [field.key]: event.target.checked,
-                          }))
-                        }
-                      />
-                      {field.label}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
 
             <div className="bg-white shadow overflow-hidden sm:rounded-md">
               <div className="overflow-auto">

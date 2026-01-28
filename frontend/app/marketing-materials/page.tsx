@@ -70,8 +70,8 @@ export default function MarketingMaterialsPage() {
               <Image
                 src="/af-logo-short-dark.svg"
                 alt="Access Financial"
-                width={96}
-                height={40}
+                width={88}
+                height={36}
                 className="h-8 w-auto"
               />
             </button>
@@ -98,14 +98,14 @@ export default function MarketingMaterialsPage() {
               onClick={() => router.push('/dashboard')}
               className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:border-gray-300"
             >
-              Back to Dashboard
               <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                 <path
                   fillRule="evenodd"
-                  d="M7.21 14.77a.75.75 0 0 1 .02-1.06L10.168 10 7.23 7.29a.75.75 0 0 1 1.04-1.08l3.5 3.24a.75.75 0 0 1 0 1.1l-3.5 3.24a.75.75 0 0 1-1.06-.02Z"
+                  d="M12.79 5.23a.75.75 0 0 1-.02 1.06L9.832 10l2.938 3.71a.75.75 0 1 1-1.04 1.08l-3.5-4.24a.75.75 0 0 1 0-1.1l3.5-4.24a.75.75 0 0 1 1.06-.02Z"
                   clipRule="evenodd"
                 />
               </svg>
+              Back to Dashboard
             </button>
           </div>
           {isLoading ? (
