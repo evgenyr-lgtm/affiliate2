@@ -1,0 +1,6 @@
+env:
+  - variable: NEXT_PUBLIC_API_URL
+    value: https://affiliate-backend-484095968655.us-east4.run.app/api
+    availability:
+      - BUILD
+      - RUNTIME

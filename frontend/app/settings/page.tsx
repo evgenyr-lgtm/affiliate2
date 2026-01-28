@@ -377,7 +377,7 @@ export default function SettingsPage() {
                   <input
                     value={email}
                     readOnly
-                    className="mt-2 block w-full rounded-full border-gray-200 bg-gray-100 px-4 py-3 text-sm text-gray-700 opacity-10 cursor-not-allowed"
+                    className="mt-2 block w-full rounded-full border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-400 shadow-sm"
                   />
                 </div>
               </div>
