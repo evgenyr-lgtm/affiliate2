@@ -12,20 +12,8 @@ export class EmailService {
     private configService: ConfigService,
     private prisma: PrismaService,
   ) {
-    const host = this.configService.get<string>('SMTP_HOST');
-    const port = this.configService.get<number>('SMTP_PORT');
-    const user = this.configService.get<string>('SMTP_USER');
-    const pass = this.configService.get<string>('SMTP_PASS');
-
-    if (host && port) {
-      this.isEnabled = true;
-      this.transporter = nodemailer.createTransport({
-        host,
-        port,
-        secure: port === 465,
-        auth: user && pass ? { user, pass } : undefined,
-      });
-    }
+    // SMTP disabled: keep registration and flows non-blocking.
+    this.isEnabled = false;
   }
 
   async sendVerificationEmail(email: string, token: string) {
