@@ -105,13 +105,9 @@ export default function DashboardPage() {
     },
   })
 
-  if (isLoading) {
-    return <div className="p-8">Loading...</div>
-  }
-
-  const { affiliate, referrals, stats } = data || {}
-  const affiliateData: AffiliateData = affiliate || {}
-  const referralRows: ReferralRow[] = referrals || []
+  const affiliateData: AffiliateData = useMemo(() => data?.affiliate || {}, [data])
+  const referralRows: ReferralRow[] = useMemo(() => data?.referrals || [], [data])
+  const stats = data?.stats || {}
 
   const exportRows = useMemo<ExportRow[]>(() => {
     return referralRows.map((referral, index) => ({
@@ -128,6 +124,10 @@ export default function DashboardPage() {
       'Company Name': referral.companyName || '',
     }))
   }, [referralRows, affiliateData])
+
+  if (isLoading) {
+    return <div className="p-8">Loading...</div>
+  }
 
   const downloadBlob = (blob: Blob, filename: string) => {
     const url = window.URL.createObjectURL(blob)

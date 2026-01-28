@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import api from '@/lib/api'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Cookies from 'js-cookie'
 import toast from 'react-hot-toast'
 import Image from 'next/image'
@@ -67,7 +67,7 @@ export default function SettingsPage() {
     },
   })
 
-  const affiliate = dashboardData?.affiliate || {}
+  const affiliate = useMemo(() => dashboardData?.affiliate || {}, [dashboardData])
   const email = affiliate.email || ''
   const baseUrl = getBackendBaseUrl()
 
