@@ -1,6 +1,5 @@
-import { IsString, IsOptional, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsBoolean } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { RateType, PaymentTerm } from '@prisma/client';
 
 export class UpdateAffiliateDto {
   @ApiProperty({ required: false })
@@ -21,7 +20,22 @@ export class UpdateAffiliateDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
+  jobTitle?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
   phone?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsBoolean()
+  notifySystem?: boolean;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsBoolean()
+  notifyMarketing?: boolean;
 
   @ApiProperty({ required: false })
   @IsOptional()

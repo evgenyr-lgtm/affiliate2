@@ -15,6 +15,11 @@ export class AffiliatesService {
     const affiliate = await this.prisma.affiliate.findUnique({
       where: { userId },
       include: {
+        user: {
+          select: {
+            email: true,
+          },
+        },
         referrals: {
           orderBy: { entryDate: 'desc' },
           select: {
@@ -28,7 +33,12 @@ export class AffiliatesService {
             lastName: true,
             companyName: true,
             email: true,
+            phone: true,
+            contactFirstName: true,
+            contactLastName: true,
             contactEmail: true,
+            contactPhone: true,
+            internalNotes: true,
           },
         },
       },
@@ -47,11 +57,15 @@ export class AffiliatesService {
         firstName: affiliate.firstName,
         lastName: affiliate.lastName,
         companyName: affiliate.companyName,
+        jobTitle: affiliate.jobTitle,
         rateType: affiliate.rateType,
         rateValue: affiliate.rateValue,
         paymentTerm: affiliate.paymentTerm,
         currency: affiliate.currency,
+        notifySystem: affiliate.notifySystem,
+        notifyMarketing: affiliate.notifyMarketing,
         avatar: affiliate.avatar,
+        email: affiliate.user?.email,
       },
       referrals: affiliate.referrals,
       stats: {
@@ -123,6 +137,30 @@ export class AffiliatesService {
     }
 
     return updated;
+  }
+
+  async deleteAccount(userId: string) {
+    const affiliate = await this.prisma.affiliate.findUnique({
+      where: { userId },
+    });
+
+    if (!affiliate) {
+      throw new NotFoundException('Affiliate not found');
+    }
+
+    const now = new Date();
+
+    await this.prisma.affiliate.update({
+      where: { userId },
+      data: { deletedAt: now },
+    });
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { deletedAt: now, isBlocked: true },
+    });
+
+    return { message: 'Account deleted' };
   }
 
   private async getBaseUrl(): Promise<string> {

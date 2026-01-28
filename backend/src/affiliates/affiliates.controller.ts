@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Body, UseGuards, Request, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Put, Body, UseGuards, Request, UseInterceptors, UploadedFile, Delete } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { AffiliatesService } from './affiliates.service';
@@ -49,7 +49,7 @@ export class AffiliatesController {
         },
       }),
       limits: {
-        fileSize: 2 * 1024 * 1024, // 2MB
+        fileSize: 5 * 1024 * 1024, // 5MB
       },
       fileFilter: (req, file, cb) => {
         if (file.mimetype.match(/\/(jpg|jpeg|png|gif|webp)$/)) {
@@ -68,5 +68,11 @@ export class AffiliatesController {
     }
     const avatarUrl = `/uploads/avatars/${file.filename}`;
     return this.affiliatesService.updateProfile(req.user.userId, { avatar: avatarUrl });
+  }
+
+  @Delete('account')
+  @ApiOperation({ summary: 'Delete affiliate account' })
+  async deleteAccount(@Request() req) {
+    return this.affiliatesService.deleteAccount(req.user.userId);
   }
 }

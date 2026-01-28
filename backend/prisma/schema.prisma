@@ -94,12 +94,15 @@ model Affiliate {
   firstName     String
   lastName      String
   companyName   String?
+  jobTitle      String?
   phone         String
   status        AffiliateStatus @default(pending)
   rateType      RateType        @default(percent)
   rateValue     Float           @default(0)
   paymentTerm   PaymentTerm     @default(monthly)
   currency      String          @default("USD")
+  notifySystem  Boolean         @default(true)
+  notifyMarketing Boolean       @default(true)
   avatar        String?
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
