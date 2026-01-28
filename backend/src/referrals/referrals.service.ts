@@ -21,7 +21,7 @@ export class ReferralsService {
       throw new NotFoundException('Affiliate not found');
     }
 
-    if (affiliate.status !== 'active') {
+    if (affiliate.status === 'rejected' || affiliate.status === 'disabled') {
       throw new BadRequestException('Affiliate account is not active');
     }
 

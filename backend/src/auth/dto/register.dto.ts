@@ -24,13 +24,19 @@ export class RegisterDto {
   @IsString()
   companyName?: string;
 
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  jobTitle?: string;
+
   @ApiProperty()
   @IsEmail()
   email: string;
 
-  @ApiProperty()
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsString()
-  phone: string;
+  phone?: string;
 
   @ApiProperty({ minLength: 8 })
   @IsString()

@@ -65,6 +65,7 @@ export class AffiliatesService {
         notifySystem: affiliate.notifySystem,
         notifyMarketing: affiliate.notifyMarketing,
         avatar: affiliate.avatar,
+        phone: affiliate.phone,
         email: affiliate.user?.email,
       },
       referrals: affiliate.referrals,

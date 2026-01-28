@@ -69,7 +69,7 @@ export default function SettingsPage() {
   })
 
   const affiliate = useMemo(() => dashboardData?.affiliate || {}, [dashboardData])
-  const email = affiliate.email || ''
+  const email = affiliate.email || dashboardData?.user?.email || ''
   const baseUrl = getBackendBaseUrl()
 
   const {
@@ -377,7 +377,7 @@ export default function SettingsPage() {
                   <input
                     value={email}
                     readOnly
-                    className="mt-2 block w-full rounded-full border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-400 shadow-sm"
+                    className="mt-2 block w-full rounded-full border-gray-200 bg-gray-100 px-4 py-3 text-sm text-gray-900"
                   />
                 </div>
               </div>

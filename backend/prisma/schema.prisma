@@ -95,7 +95,7 @@ model Affiliate {
   lastName      String
   companyName   String?
   jobTitle      String?
-  phone         String
+  phone         String?
   status        AffiliateStatus @default(pending)
   rateType      RateType        @default(percent)
   rateValue     Float           @default(0)

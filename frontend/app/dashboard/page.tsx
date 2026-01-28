@@ -148,6 +148,7 @@ export default function DashboardPage() {
   })
 
   const affiliateData: AffiliateData = useMemo(() => data?.affiliate || {}, [data])
+  const affiliateEmail = affiliateData.email || data?.user?.email || ''
   const referralRows: ReferralRow[] = useMemo(() => data?.referrals || [], [data])
   const stats = data?.stats || {}
 
@@ -450,7 +451,7 @@ export default function DashboardPage() {
                     <label className="block text-sm font-medium text-gray-600">Affiliate Email</label>
                     <input
                       readOnly
-                      value={affiliateData.email || ''}
+                      value={affiliateEmail}
                       className="mt-2 w-full rounded-full border border-gray-200 bg-gray-100 px-4 py-3 text-sm text-gray-900"
                     />
                   </div>
