@@ -501,28 +501,6 @@ export default function AdminPage() {
     setMaintenanceEnabled(maintenanceSetting?.value === 'true')
   }, [settingsData])
 
-  useEffect(() => {
-    if (!templates || templatesSeeded) return
-    const existingNames = new Set((templates as EmailTemplateRow[]).map((t) => t.name))
-    const defaults = [...templateGroups.manager, ...templateGroups.affiliate]
-    const missing = defaults.filter((template) => !existingNames.has(template.name))
-    if (missing.length === 0) {
-      setTemplatesSeeded(true)
-      return
-    }
-    missing.forEach((template) => {
-      createTemplateMutation.mutate({
-        name: template.name,
-        description: template.description,
-        subject: template.subject,
-        body: template.body,
-        enabled: true,
-        variables: availableTags,
-      })
-    })
-    setTemplatesSeeded(true)
-  }, [templates, templatesSeeded, createTemplateMutation])
-
   const resetPasswordStrength = resetAffiliatePassword
     ? getPasswordStrength(resetAffiliatePassword)
     : null
@@ -714,6 +692,28 @@ export default function AdminPage() {
       toast.error(error.response?.data?.message || 'Failed to create template')
     },
   })
+
+  useEffect(() => {
+    if (!templates || templatesSeeded) return
+    const existingNames = new Set((templates as EmailTemplateRow[]).map((t) => t.name))
+    const defaults = [...templateGroups.manager, ...templateGroups.affiliate]
+    const missing = defaults.filter((template) => !existingNames.has(template.name))
+    if (missing.length === 0) {
+      setTemplatesSeeded(true)
+      return
+    }
+    missing.forEach((template) => {
+      createTemplateMutation.mutate({
+        name: template.name,
+        description: template.description,
+        subject: template.subject,
+        body: template.body,
+        enabled: true,
+        variables: availableTags,
+      })
+    })
+    setTemplatesSeeded(true)
+  }, [templates, templatesSeeded, createTemplateMutation])
 
   const handleDraftChange = (affiliateId: string, patch: any) => {
     setDrafts((prev) => ({
