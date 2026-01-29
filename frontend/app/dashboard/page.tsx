@@ -11,6 +11,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import toast from 'react-hot-toast'
 import { phoneCountries } from '@/lib/phoneCountries'
+import PhoneCountrySelect from '@/components/PhoneCountrySelect'
 
 type ReferralRow = {
   id: string
@@ -74,57 +75,10 @@ const getReferralPhone = (referral: ReferralRow) =>
     ? referral.contactPhone || referral.phone || ''
     : referral.phone || referral.contactPhone || ''
 
-const PhoneSelector = ({
-  country,
-  setCountry,
-  number,
-  setNumber,
-  placeholder,
-}: {
-  country: (typeof phoneCountries)[number]
-  setCountry: (country: (typeof phoneCountries)[number]) => void
-  number: string
-  setNumber: (value: string) => void
-  placeholder: string
-}) => (
-  <div className="mt-2 flex w-full items-center rounded-full border border-gray-200 bg-white shadow-sm focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-200">
-    <div className="relative">
-      <select
-        value={country.code}
-        onChange={(event) => {
-          const next = phoneCountries.find((item) => item.code === event.target.value)
-          if (next) setCountry(next)
-        }}
-        className="h-full w-28 appearance-none bg-transparent py-3 pl-4 pr-8 text-sm text-gray-900 focus:outline-none truncate"
-      >
-        {phoneCountries.map((item) => (
-          <option key={item.code} value={item.code}>
-            {item.flag} {item.name} ({item.dial})
-          </option>
-        ))}
-      </select>
-      <svg
-        className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400"
-        viewBox="0 0 20 20"
-        fill="currentColor"
-      >
-        <path
-          fillRule="evenodd"
-          d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.24 4.5a.75.75 0 0 1-1.08 0l-4.24-4.5a.75.75 0 0 1 .02-1.06Z"
-          clipRule="evenodd"
-        />
-      </svg>
-    </div>
-    <div className="h-6 w-px bg-gray-200" />
-    <input
-      type="tel"
-      value={number}
-      onChange={(event) => setNumber(event.target.value)}
-      placeholder={placeholder}
-      className="flex-1 bg-transparent px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
-    />
-  </div>
-)
+const findCountryByCode = (code?: string) => {
+  const trimmed = String(code || '').toUpperCase()
+  return phoneCountries.find((item) => item.code === trimmed)
+}
 
 const getBackendBaseUrl = () => {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
@@ -173,6 +127,8 @@ export default function DashboardPage() {
   )
   const [referralPhoneNumber, setReferralPhoneNumber] = useState('')
   const [contactPhoneNumber, setContactPhoneNumber] = useState('')
+  const [hasSelectedReferralCountry, setHasSelectedReferralCountry] = useState(false)
+  const [hasSelectedContactCountry, setHasSelectedContactCountry] = useState(false)
   const profileMenuRef = useRef<HTMLDivElement | null>(null)
   const exportMenuRef = useRef<HTMLDivElement | null>(null)
   const filterMenuRef = useRef<HTMLDivElement | null>(null)
@@ -214,6 +170,32 @@ export default function DashboardPage() {
   const affiliateEmail = affiliateData.email || data?.user?.email || ''
   const referralRows: ReferralRow[] = useMemo(() => data?.referrals || [], [data])
   const stats = data?.stats || {}
+
+  useEffect(() => {
+    let active = true
+    const detectCountry = async () => {
+      try {
+        const response = await fetch('https://ipapi.co/json/')
+        if (!response.ok) return
+        const data = await response.json()
+        const match = findCountryByCode(data?.country_code)
+        if (!active || !match) return
+        if (!hasSelectedReferralCountry) {
+          setReferralPhoneCountry(match)
+        }
+        if (!hasSelectedContactCountry) {
+          setContactPhoneCountry(match)
+        }
+      } catch (error) {
+        // ignore geolocation failures
+      }
+    }
+
+    detectCountry()
+    return () => {
+      active = false
+    }
+  }, [hasSelectedReferralCountry, hasSelectedContactCountry])
 
   useEffect(() => {
     const nextDuration = [contractStart, contractEnd].filter(Boolean).join(' - ')
@@ -578,11 +560,14 @@ export default function DashboardPage() {
                         readOnly
                         className="hidden"
                       />
-                      <PhoneSelector
+                      <PhoneCountrySelect
                         country={referralPhoneCountry}
-                        setCountry={setReferralPhoneCountry}
+                        onCountryChange={(next) => {
+                          setHasSelectedReferralCountry(true)
+                          setReferralPhoneCountry(next)
+                        }}
                         number={referralPhoneNumber}
-                        setNumber={setReferralPhoneNumber}
+                        onNumberChange={setReferralPhoneNumber}
                         placeholder="Phone"
                       />
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -714,11 +699,14 @@ export default function DashboardPage() {
                         readOnly
                         className="hidden"
                       />
-                      <PhoneSelector
+                      <PhoneCountrySelect
                         country={contactPhoneCountry}
-                        setCountry={setContactPhoneCountry}
+                        onCountryChange={(next) => {
+                          setHasSelectedContactCountry(true)
+                          setContactPhoneCountry(next)
+                        }}
                         number={contactPhoneNumber}
-                        setNumber={setContactPhoneNumber}
+                        onNumberChange={setContactPhoneNumber}
                         placeholder="Phone"
                       />
                       <input

@@ -135,7 +135,7 @@ export default function LoginPage() {
 
           <div className="hidden md:block p-4">
             <div
-              className="h-full w-full rounded-[24px] bg-[#0f1ccf] relative overflow-hidden"
+              className="h-full w-full rounded-[24px] bg-[#0f1ccf] relative overflow-hidden animate-soft-pink"
               style={{
                 backgroundImage:
                   'radial-gradient(circle at 70% 20%, #7b86ff 0%, #2b36ff 35%, #0b1a8f 100%)',
@@ -159,11 +159,23 @@ export default function LoginPage() {
             transform: translateY(-10px) scale(1.02);
           }
         }
+        @keyframes softPink {
+          0%,
+          100% {
+            filter: hue-rotate(0deg) saturate(1);
+          }
+          50% {
+            filter: hue-rotate(25deg) saturate(1.15);
+          }
+        }
         .animate-float-slow {
           animation: float 10s ease-in-out infinite;
         }
         .animate-float-fast {
           animation: float 8s ease-in-out infinite;
+        }
+        .animate-soft-pink {
+          animation: softPink 12s ease-in-out infinite;
         }
       `}</style>
     </div>

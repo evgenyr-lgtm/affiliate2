@@ -10,6 +10,7 @@ import api from '@/lib/api'
 import toast from 'react-hot-toast'
 import Cookies from 'js-cookie'
 import { phoneCountries } from '@/lib/phoneCountries'
+import PhoneCountrySelect from '@/components/PhoneCountrySelect'
 
 type PasswordStrength = 'Easy' | 'Medium' | 'Strong'
 
@@ -67,6 +68,7 @@ export default function RegisterPage() {
     phoneCountries.find((item) => item.code === 'US') || phoneCountries[0]
   )
   const [phoneNumber, setPhoneNumber] = useState('')
+  const [hasSelectedCountry, setHasSelectedCountry] = useState(false)
 
   const {
     register,
@@ -84,6 +86,28 @@ export default function RegisterPage() {
   const accountType = watch('accountType')
   const passwordValue = watch('password') || ''
   const passwordStrength = passwordValue ? getPasswordStrength(passwordValue) : null
+
+  useEffect(() => {
+    let active = true
+    const detectCountry = async () => {
+      try {
+        const response = await fetch('https://ipapi.co/json/')
+        if (!response.ok) return
+        const data = await response.json()
+        const code = String(data?.country_code || '').toUpperCase()
+        if (!active || !code || hasSelectedCountry) return
+        const match = phoneCountries.find((item) => item.code === code)
+        if (match) setPhoneCountry(match)
+      } catch (error) {
+        // Ignore geolocation failures silently
+      }
+    }
+
+    detectCountry()
+    return () => {
+      active = false
+    }
+  }, [hasSelectedCountry])
 
   useEffect(() => {
     const trimmed = phoneNumber.trim()
@@ -241,45 +265,17 @@ export default function RegisterPage() {
                     Phone
                   </label>
                   <input {...register('phone')} type="hidden" />
-                  <div className="mt-2 flex w-full items-center rounded-full border border-gray-200 bg-white shadow-sm focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-200">
-                    <div className="relative">
-                      <select
-                        value={phoneCountry.code}
-                        onChange={(event) => {
-                          const next = phoneCountries.find(
-                            (item) => item.code === event.target.value
-                          )
-                          if (next) setPhoneCountry(next)
-                        }}
-                        className="h-full w-28 appearance-none bg-transparent py-3 pl-4 pr-8 text-sm text-gray-900 focus:outline-none truncate"
-                      >
-                        {phoneCountries.map((item) => (
-                          <option key={item.code} value={item.code}>
-                            {item.flag} {item.name} ({item.dial})
-                          </option>
-                        ))}
-                      </select>
-                      <svg
-                        className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.24 4.5a.75.75 0 0 1-1.08 0l-4.24-4.5a.75.75 0 0 1 .02-1.06Z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                    <div className="h-6 w-px bg-gray-200" />
-                    <input
-                      type="tel"
-                      value={phoneNumber}
-                      onChange={(event) => setPhoneNumber(event.target.value)}
-                      placeholder="Phone number"
-                      className="flex-1 bg-transparent px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
-                    />
-                  </div>
+                  <PhoneCountrySelect
+                    country={phoneCountry}
+                    onCountryChange={(next) => {
+                      setHasSelectedCountry(true)
+                      setPhoneCountry(next)
+                    }}
+                    number={phoneNumber}
+                    onNumberChange={setPhoneNumber}
+                    placeholder="Phone number"
+                    compact
+                  />
                 </div>
 
                 <div>
@@ -347,7 +343,7 @@ export default function RegisterPage() {
 
           <div className="hidden md:block p-4">
             <div
-              className="h-full w-full rounded-[24px] bg-[#0f1ccf] relative overflow-hidden"
+              className="h-full w-full rounded-[24px] bg-[#0f1ccf] relative overflow-hidden animate-soft-pink"
               style={{
                 backgroundImage:
                   'radial-gradient(circle at 70% 20%, #7b86ff 0%, #2b36ff 35%, #0b1a8f 100%)',
@@ -371,11 +367,23 @@ export default function RegisterPage() {
             transform: translateY(-10px) scale(1.02);
           }
         }
+        @keyframes softPink {
+          0%,
+          100% {
+            filter: hue-rotate(0deg) saturate(1);
+          }
+          50% {
+            filter: hue-rotate(25deg) saturate(1.15);
+          }
+        }
         .animate-float-slow {
           animation: float 10s ease-in-out infinite;
         }
         .animate-float-fast {
           animation: float 8s ease-in-out infinite;
+        }
+        .animate-soft-pink {
+          animation: softPink 12s ease-in-out infinite;
         }
       `}</style>
     </div>
