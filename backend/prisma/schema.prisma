@@ -103,6 +103,7 @@ model Affiliate {
   companyName   String?
   jobTitle      String?
   phone         String?
+  internalNotes String?         @db.Text
   status        AffiliateStatus @default(pending)
   rateType      RateType        @default(percent)
   rateValue     Float           @default(0)

@@ -664,6 +664,13 @@ export default function AdminPage() {
     },
   })
 
+  const resolveDocumentLink = (doc: DocumentRow) => {
+    if (doc.fileUrl.startsWith('http://') || doc.fileUrl.startsWith('https://')) {
+      return doc.fileUrl
+    }
+    return `${baseUrl}/documents/${doc.id}/download`
+  }
+
   const updateDocumentMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
       return api.put(`/documents/${id}`, data)
@@ -931,6 +938,13 @@ export default function AdminPage() {
     exportRowsToFile(referralExportRows, format, filename)
   }
 
+  const hasAffiliateExtraColumns =
+    visibleColumns.email ||
+    visibleColumns.phone ||
+    visibleColumns.accountType ||
+    visibleColumns.companyName ||
+    visibleColumns.notes
+
   const hasReferralExtraColumns =
     visibleReferralColumns.email || visibleReferralColumns.phone || visibleReferralColumns.notes
 
@@ -1178,7 +1192,7 @@ export default function AdminPage() {
                   <div className="overflow-x-auto">
                     <table
                       className={`divide-y divide-gray-200 text-sm whitespace-nowrap ${
-                        hasReferralExtraColumns ? 'min-w-max' : 'min-w-full'
+                        hasAffiliateExtraColumns ? 'min-w-max' : 'min-w-full'
                       }`}
                     >
                       <thead className="bg-gray-50 text-gray-600">
@@ -1321,7 +1335,20 @@ export default function AdminPage() {
                                 <td className="px-4 py-3">{affiliate.companyName || '–'}</td>
                               )}
                               {visibleColumns.notes && (
-                                <td className="px-4 py-3">{affiliate.internalNotes || '-'}</td>
+                                <td className="px-4 py-3">
+                                  {isEditing ? (
+                                    <textarea
+                                      value={draft.internalNotes ?? affiliate.internalNotes ?? ''}
+                                      onChange={(event) =>
+                                        handleDraftChange(affiliate.id, { internalNotes: event.target.value })
+                                      }
+                                      rows={2}
+                                      className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                                    />
+                                  ) : (
+                                    affiliate.internalNotes || '-'
+                                  )}
+                                </td>
                               )}
                               <td className="px-4 py-3">
                                 <div className="flex items-center gap-2">
@@ -1359,13 +1386,13 @@ export default function AdminPage() {
                                     className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 text-gray-600 hover:border-gray-300"
                                     onClick={() => setResetAffiliateId(affiliate.id)}
                                   >
-                                    <Image
-                                      src="/reset-password.png"
-                                      alt="Reset password"
-                                      width={16}
-                                      height={16}
-                                      className="h-4 w-4"
-                                    />
+                                  <Image
+                                    src="/reset-password.png"
+                                    alt="Reset password"
+                                    width={24}
+                                    height={24}
+                                    className="h-6 w-6"
+                                  />
                                   </button>
                                   <button
                                     type="button"
@@ -1543,7 +1570,11 @@ export default function AdminPage() {
               ) : (
                 <div className="bg-white shadow overflow-hidden sm:rounded-md">
                   <div className="overflow-x-auto">
-                    <table className="min-w-max divide-y divide-gray-200 text-sm whitespace-nowrap">
+                    <table
+                      className={`divide-y divide-gray-200 text-sm whitespace-nowrap ${
+                        hasReferralExtraColumns ? 'min-w-max' : 'min-w-full'
+                      }`}
+                    >
                       <thead className="bg-gray-50 text-gray-600">
                         <tr>
                           <th className="px-4 py-3 text-left font-semibold">#</th>
@@ -1761,7 +1792,7 @@ export default function AdminPage() {
                           const typeLabel =
                             documentTypeOptions.find((option) => option.value === doc.type)?.label ||
                             doc.type
-                          const fileLink = `${baseUrl}${doc.fileUrl}`
+                          const fileLink = resolveDocumentLink(doc)
                           const shareLinks = buildShareLinks(fileLink)
                           return (
                             <tr key={doc.id} className="text-gray-700">

@@ -29,4 +29,9 @@ export class UpdateAffiliateAdminDto {
   @Matches(/^[A-Z]{3}$/)
   @IsOptional()
   currency?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  internalNotes?: string;
 }

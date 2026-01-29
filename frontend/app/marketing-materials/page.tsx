@@ -86,6 +86,13 @@ export default function MarketingMaterialsPage() {
   const documents: DocumentRow[] = data || []
   const baseUrl = getBackendBaseUrl()
 
+  const resolveDocumentLink = (doc: DocumentRow) => {
+    if (doc.fileUrl.startsWith('http://') || doc.fileUrl.startsWith('https://')) {
+      return doc.fileUrl
+    }
+    return `${baseUrl}/documents/${doc.id}/download`
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white shadow">
@@ -192,7 +199,7 @@ export default function MarketingMaterialsPage() {
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {documents.map((doc) => {
-                      const fileLink = `${baseUrl}${doc.fileUrl}`
+                      const fileLink = resolveDocumentLink(doc)
                       const shareLinks = buildShareLinks(fileLink)
                       return (
                         <tr key={doc.id} className="text-gray-700">

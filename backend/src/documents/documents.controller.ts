@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Put, Body, Param, Query, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Put, Body, Param, Query, UseGuards, UseInterceptors, UploadedFile, Res } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { DocumentsService } from './documents.service';
@@ -10,6 +10,29 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole, DocumentType } from '@prisma/client';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { Storage } from '@google-cloud/storage';
+import { Response } from 'express';
+import { createReadStream, existsSync } from 'fs';
+import { join } from 'path';
+
+const getBucketName = () => {
+  if (process.env.GCS_BUCKET) return process.env.GCS_BUCKET;
+  if (process.env.FIREBASE_STORAGE_BUCKET) return process.env.FIREBASE_STORAGE_BUCKET;
+  if (process.env.GOOGLE_CLOUD_PROJECT) return `${process.env.GOOGLE_CLOUD_PROJECT}.appspot.com`;
+  return undefined;
+};
+
+const buildPublicUrl = (bucket: string, objectName: string) =>
+  `https://storage.googleapis.com/${bucket}/${objectName}`;
+
+const parseGcsUrl = (url: string) => {
+  if (!url.startsWith('gcs://')) return null;
+  const trimmed = url.replace('gcs://', '');
+  const [bucket, ...rest] = trimmed.split('/');
+  const objectName = rest.join('/');
+  if (!bucket || !objectName) return null;
+  return { bucket, objectName };
+};
 
 @ApiTags('Documents')
 @Controller('documents')
@@ -37,9 +60,37 @@ export class DocumentsController {
     return this.documentsService.findOne(id);
   }
 
+  @Get(':id/download')
+  @ApiOperation({ summary: 'Download document by ID' })
+  async download(@Param('id') id: string, @Res() res: Response) {
+    const doc = await this.documentsService.findOne(id);
+    if (!doc) {
+      return res.status(404).json({ message: 'Document not found' });
+    }
+
+    const gcsInfo = parseGcsUrl(doc.fileUrl);
+    if (gcsInfo) {
+      const storage = new Storage();
+      const file = storage.bucket(gcsInfo.bucket).file(gcsInfo.objectName);
+      const stream = file.createReadStream();
+      stream.on('error', () => {
+        res.status(404).json({ message: 'File not found' });
+      });
+      stream.pipe(res);
+      return;
+    }
+
+    const relativePath = doc.fileUrl.replace('/uploads/', '');
+    const filePath = join(process.cwd(), 'uploads', relativePath);
+    if (!existsSync(filePath)) {
+      return res.status(404).json({ message: 'File not found' });
+    }
+    return createReadStream(filePath).pipe(res);
+  }
+
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.MARKETING_ADMIN, UserRole.SYSTEM_ADMIN)
+  @Roles(UserRole.MARKETING_ADMIN, UserRole.SALES_ADMIN, UserRole.SYSTEM_ADMIN)
   @ApiBearerAuth()
   @UseInterceptors(
     FileInterceptor('file', {
@@ -84,11 +135,23 @@ export class DocumentsController {
     if (!file) {
       throw new Error('File is required');
     }
-    const fileUrl = `/uploads/documents/${file.filename}`;
+    const localUrl = `/uploads/documents/${file.filename}`;
+    const bucket = getBucketName();
+    if (bucket) {
+      const storage = new Storage();
+      const objectName = `documents/${file.filename}`;
+      await storage.bucket(bucket).upload(file.path, { destination: objectName });
+      return this.documentsService.create({
+        name: name || file.originalname,
+        type: type || DocumentType.other,
+        fileUrl: `gcs://${bucket}/${objectName}`,
+      });
+    }
+
     return this.documentsService.create({
       name: name || file.originalname,
       type: type || DocumentType.other,
-      fileUrl,
+      fileUrl: localUrl,
     });
   }
 
@@ -107,6 +170,14 @@ export class DocumentsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete document (admin only)' })
   async delete(@Param('id') id: string) {
+    const doc = await this.documentsService.findOne(id);
+    if (doc?.fileUrl?.startsWith('gcs://')) {
+      const gcsInfo = parseGcsUrl(doc.fileUrl);
+      if (gcsInfo) {
+        const storage = new Storage();
+        await storage.bucket(gcsInfo.bucket).file(gcsInfo.objectName).delete().catch(() => undefined);
+      }
+    }
     return this.documentsService.delete(id);
   }
 }

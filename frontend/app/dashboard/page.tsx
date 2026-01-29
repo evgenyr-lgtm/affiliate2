@@ -42,6 +42,7 @@ type AffiliateData = {
   rateType?: 'percent' | 'fixed'
   rateValue?: number
   paymentTerm?: 'weekly' | 'monthly' | 'quarterly' | 'yearly'
+  currency?: string
 }
 
 type ExportRow = Record<string, string | number>
@@ -251,6 +252,7 @@ export default function DashboardPage() {
       'Payment Term': labelFrom(affiliateData.paymentTerm || ''),
       'Rate Type': labelFrom(affiliateData.rateType || ''),
       Rate: affiliateData.rateValue ?? 0,
+      Currency: affiliateData.currency || 'USD',
       'Payment Status': labelFrom(referral.paymentStatus),
       'Date of Registration': formatDate(referral.entryDate),
       Email: getReferralEmail(referral) || '',
@@ -922,6 +924,7 @@ export default function DashboardPage() {
                       <th className="px-4 py-3 text-left font-semibold">Payment Term</th>
                       <th className="px-4 py-3 text-left font-semibold">Rate Type</th>
                       <th className="px-4 py-3 text-left font-semibold">Rate</th>
+                      <th className="px-4 py-3 text-left font-semibold">Currency</th>
                       <th className="px-4 py-3 text-left font-semibold">Payment Status</th>
                       <th className="px-4 py-3 text-left font-semibold">Date of Registration</th>
                       {visibleColumns.email && (
@@ -944,6 +947,7 @@ export default function DashboardPage() {
                         <td className="px-4 py-3">{labelFrom(affiliateData.paymentTerm || '')}</td>
                         <td className="px-4 py-3">{labelFrom(affiliateData.rateType || '')}</td>
                         <td className="px-4 py-3">{affiliateData.rateValue ?? 0}</td>
+                        <td className="px-4 py-3">{affiliateData.currency || 'USD'}</td>
                         <td className="px-4 py-3">{labelFrom(referral.paymentStatus)}</td>
                         <td className="px-4 py-3">{formatDate(referral.entryDate)}</td>
                         {visibleColumns.email && (
