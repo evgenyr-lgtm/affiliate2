@@ -18,6 +18,7 @@ export class EmailTemplatesService {
       data: {
         name: dto.name,
         description: dto.description,
+        group: dto.group,
         subject: dto.subject,
         body: dto.body,
         enabled: dto.enabled ?? true,

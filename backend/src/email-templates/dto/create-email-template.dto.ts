@@ -1,5 +1,6 @@
-import { IsString, IsOptional, IsBoolean, IsArray } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsArray, IsEnum } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { EmailTemplateGroup } from '@prisma/client';
 
 export class CreateEmailTemplateDto {
   @ApiProperty()
@@ -10,6 +11,11 @@ export class CreateEmailTemplateDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @ApiProperty({ required: false, enum: EmailTemplateGroup })
+  @IsOptional()
+  @IsEnum(EmailTemplateGroup)
+  group?: EmailTemplateGroup;
 
   @ApiProperty()
   @IsString()

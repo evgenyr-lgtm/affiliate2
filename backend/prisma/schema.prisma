@@ -65,6 +65,11 @@ enum DocumentType {
   other
 }
 
+enum EmailTemplateGroup {
+  manager
+  affiliate
+}
+
 model User {
   id            String    @id @default(uuid())
   email         String    @unique
@@ -203,6 +208,7 @@ model EmailTemplate {
   id          String   @id @default(uuid())
   name        String   @unique
   description String?
+  group       EmailTemplateGroup @default(manager)
   subject     String
   body        String   @db.Text
   enabled     Boolean  @default(true)

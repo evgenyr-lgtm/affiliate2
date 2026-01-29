@@ -69,6 +69,7 @@ type EmailTemplateRow = {
   id: string
   name: string
   description?: string | null
+  group?: 'manager' | 'affiliate'
   subject: string
   body: string
   enabled: boolean
@@ -167,6 +168,7 @@ const templateGroups = {
   manager: [
     {
       name: 'New Affiliate Registration',
+      group: 'manager' as const,
       description: 'Sent to a manager when a new affiliate registers.',
       subject: 'A new affiliate has registered on your site | {first_name}{last_name}',
       body:
@@ -183,6 +185,7 @@ const templateGroups = {
     },
     {
       name: 'New Referral',
+      group: 'manager' as const,
       description: 'Sent to a manager when a new referral is created.',
       subject: 'A new referral has been created | {first_name}{last_name}',
       body:
@@ -199,6 +202,7 @@ const templateGroups = {
   affiliate: [
     {
       name: 'Application Pending',
+      group: 'affiliate' as const,
       description: 'Sent when an affiliate registers and approval is required.',
       subject: 'Your application is pending | {first_name}{last_name}',
       body:
@@ -209,6 +213,7 @@ const templateGroups = {
     },
     {
       name: 'Application Rejected',
+      group: 'affiliate' as const,
       description: 'Sent when an affiliate application is rejected.',
       subject: 'Your application was rejected | {first_name}{last_name}',
       body:
@@ -219,6 +224,7 @@ const templateGroups = {
     },
     {
       name: 'New Referral Added',
+      group: 'affiliate' as const,
       description: 'Sent to affiliates when they add a new referral.',
       subject: 'New referral submitted | {first_name}{last_name}',
       body:
@@ -229,6 +235,7 @@ const templateGroups = {
     },
     {
       name: 'Referral Approved',
+      group: 'affiliate' as const,
       description: 'Sent when a referral is approved.',
       subject: 'Referral approved | {first_name}{last_name}',
       body:
@@ -239,6 +246,7 @@ const templateGroups = {
     },
     {
       name: 'Payment Done',
+      group: 'affiliate' as const,
       description: 'Sent to an affiliate when a payment is processed.',
       subject: 'Payment processed | {first_name}{last_name}',
       body:
@@ -306,6 +314,7 @@ export default function AdminPage() {
   const [templatesExpanded, setTemplatesExpanded] = useState<Record<string, boolean>>({})
   const [previewTemplate, setPreviewTemplate] = useState<EmailTemplateRow | null>(null)
   const [showNewTemplateModal, setShowNewTemplateModal] = useState(false)
+  const [newTemplateGroup, setNewTemplateGroup] = useState<'manager' | 'affiliate'>('affiliate')
   const [newTemplateName, setNewTemplateName] = useState('')
   const [newTemplateDescription, setNewTemplateDescription] = useState('')
   const [newTemplateSubject, setNewTemplateSubject] = useState('')
@@ -752,6 +761,7 @@ export default function AdminPage() {
       if (!variables?.silent) {
         toast.success('Template created')
         setShowNewTemplateModal(false)
+        setNewTemplateGroup('affiliate')
         setNewTemplateName('')
         setNewTemplateDescription('')
         setNewTemplateSubject('')
@@ -777,6 +787,7 @@ export default function AdminPage() {
         data: {
           name: template.name,
           description: template.description,
+          group: template.group,
           subject: template.subject,
           body: template.body,
           enabled: true,
@@ -836,6 +847,62 @@ export default function AdminPage() {
 
   const documentRows: DocumentRow[] = useMemo(() => documents || [], [documents])
   const templateRows: EmailTemplateRow[] = useMemo(() => templates || [], [templates])
+
+  const managerTemplates = useMemo(() => {
+    const defaults = templateGroups.manager
+    const defaultNames = new Set(defaults.map((template) => template.name))
+    const defaultGroupByName = new Map(
+      [...templateGroups.manager, ...templateGroups.affiliate].map((template) => [template.name, template.group])
+    )
+    const rowsByName = new Map(templateRows.map((row) => [row.name, row]))
+    const ordered = defaults
+      .map((template) => ({ template, row: rowsByName.get(template.name) }))
+      .filter((item) => item.row)
+    const customRows = templateRows.filter(
+      (row) =>
+        !defaultNames.has(row.name) &&
+        (row.group || defaultGroupByName.get(row.name) || 'manager') === 'manager'
+    )
+    const custom = customRows.map((row) => ({
+      template: {
+        name: row.name,
+        description: row.description || 'Custom template.',
+        subject: row.subject,
+        body: row.body,
+        group: 'manager' as const,
+      },
+      row,
+    }))
+    return [...ordered, ...custom]
+  }, [templateRows])
+
+  const affiliateTemplates = useMemo(() => {
+    const defaults = templateGroups.affiliate
+    const defaultNames = new Set(defaults.map((template) => template.name))
+    const defaultGroupByName = new Map(
+      [...templateGroups.manager, ...templateGroups.affiliate].map((template) => [template.name, template.group])
+    )
+    const rowsByName = new Map(templateRows.map((row) => [row.name, row]))
+    const ordered = defaults
+      .map((template) => ({ template, row: rowsByName.get(template.name) }))
+      .filter((item) => item.row)
+    const customRows = templateRows.filter(
+      (row) =>
+        !defaultNames.has(row.name) &&
+        (row.group || defaultGroupByName.get(row.name) || 'affiliate') === 'affiliate'
+    )
+    const custom = customRows.map((row) => ({
+      template: {
+        name: row.name,
+        description: row.description || 'Custom template.',
+        subject: row.subject,
+        body: row.body,
+        group: 'affiliate' as const,
+      },
+      row,
+    }))
+    return [...ordered, ...custom]
+  }, [templateRows])
 
   const affiliateExportRows = useMemo<ExportRow[]>(() => {
     if (!affiliates) return []
@@ -2042,9 +2109,7 @@ export default function AdminPage() {
                       <h3 className="text-sm font-semibold text-gray-700">
                         Notifications sent to Portal Managers
                       </h3>
-                      {templateGroups.manager.map((template) => {
-                        const row = templateRows.find((item) => item.name === template.name)
-                        if (!row) return null
+                      {managerTemplates.map(({ template, row }) => {
                         const isOpen = Boolean(templatesExpanded[row.id])
                         const draft = templateDrafts[row.id] || {}
                         return (
@@ -2166,9 +2231,7 @@ export default function AdminPage() {
                       <h3 className="text-sm font-semibold text-gray-700">
                         Notifications sent to Affiliates
                       </h3>
-                      {templateGroups.affiliate.map((template) => {
-                        const row = templateRows.find((item) => item.name === template.name)
-                        if (!row) return null
+                      {affiliateTemplates.map(({ template, row }) => {
                         const isOpen = Boolean(templatesExpanded[row.id])
                         const draft = templateDrafts[row.id] || {}
                         return (
@@ -2539,6 +2602,19 @@ export default function AdminPage() {
               </button>
             </div>
             <div className="mt-4 space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  Recipients
+                </label>
+                <select
+                  value={newTemplateGroup}
+                  onChange={(event) => setNewTemplateGroup(event.target.value as 'manager' | 'affiliate')}
+                  className="w-full rounded-md border border-gray-200 bg-white px-4 py-2 text-sm text-gray-900"
+                >
+                  <option value="manager">Portal Managers</option>
+                  <option value="affiliate">Affiliates</option>
+                </select>
+              </div>
               <input
                 value={newTemplateName}
                 onChange={(event) => setNewTemplateName(event.target.value)}
@@ -2583,6 +2659,7 @@ export default function AdminPage() {
                     data: {
                       name: newTemplateName,
                       description: newTemplateDescription,
+                      group: newTemplateGroup,
                       subject: newTemplateSubject,
                       body: newTemplateBody,
                       enabled: true,
