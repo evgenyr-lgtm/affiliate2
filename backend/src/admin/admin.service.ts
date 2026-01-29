@@ -1,19 +1,17 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AffiliatesService } from '../affiliates/affiliates.service';
 import { CreateAffiliateDto } from './dto/create-affiliate.dto';
 import { UpdateCommissionDto } from './dto/update-commission.dto';
 import { UpdateAffiliateAdminDto } from './dto/update-affiliate-admin.dto';
 import { AffiliateStatus } from '@prisma/client';
-import { EmailService } from '../email/email.service';
-import { v4 as uuidv4 } from 'uuid';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AdminService {
   constructor(
     private prisma: PrismaService,
     private affiliatesService: AffiliatesService,
-    private emailService: EmailService,
   ) {}
 
   async getAllAffiliates(filters?: {
@@ -102,7 +100,7 @@ export class AdminService {
     });
   }
 
-  async resetAffiliatePassword(affiliateId: string) {
+  async resetAffiliatePassword(affiliateId: string, newPassword: string) {
     const affiliate = await this.prisma.affiliate.findUnique({
       where: { id: affiliateId },
       include: { user: true },
@@ -112,21 +110,21 @@ export class AdminService {
       throw new NotFoundException('Affiliate not found');
     }
 
-    const resetToken = uuidv4();
-    const resetExpires = new Date();
-    resetExpires.setHours(resetExpires.getHours() + 1);
+    if (!newPassword || newPassword.length < 8) {
+      throw new BadRequestException('New password must be at least 8 characters');
+    }
 
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
     await this.prisma.user.update({
       where: { id: affiliate.userId },
       data: {
-        resetPasswordToken: resetToken,
-        resetPasswordExpires: resetExpires,
+        password: hashedPassword,
+        resetPasswordToken: null,
+        resetPasswordExpires: null,
       },
     });
 
-    await this.emailService.sendPasswordResetEmail(affiliate.user.email, resetToken);
-
-    return { message: 'Password reset email sent' };
+    return { message: 'Password updated' };
   }
 
   async setAffiliateBlocked(affiliateId: string, blocked: boolean) {
@@ -155,19 +153,11 @@ export class AdminService {
       throw new NotFoundException('Affiliate not found');
     }
 
-    const now = new Date();
-
-    await this.prisma.affiliate.update({
-      where: { id: affiliateId },
-      data: { deletedAt: now },
-    });
-
-    await this.prisma.user.update({
+    await this.prisma.user.delete({
       where: { id: affiliate.userId },
-      data: { deletedAt: now, isBlocked: true },
     });
 
-    return { message: 'Affiliate deleted' };
+    return { message: 'Affiliate deleted permanently' };
   }
 
   async createAffiliateManually(dto: CreateAffiliateDto) {

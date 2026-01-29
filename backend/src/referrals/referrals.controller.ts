@@ -50,7 +50,12 @@ export class ReferralsController {
 
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.AFFILIATE, UserRole.MARKETING_ADMIN, UserRole.SALES_ADMIN)
+  @Roles(
+    UserRole.AFFILIATE,
+    UserRole.MARKETING_ADMIN,
+    UserRole.SALES_ADMIN,
+    UserRole.SYSTEM_ADMIN,
+  )
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get referrals (filtered by role)' })
   async getReferrals(
@@ -72,7 +77,7 @@ export class ReferralsController {
 
   @Put(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.MARKETING_ADMIN, UserRole.SALES_ADMIN)
+  @Roles(UserRole.MARKETING_ADMIN, UserRole.SALES_ADMIN, UserRole.SYSTEM_ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update referral (admin only)' })
   async updateReferral(
@@ -85,7 +90,7 @@ export class ReferralsController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.MARKETING_ADMIN, UserRole.SALES_ADMIN)
+  @Roles(UserRole.MARKETING_ADMIN, UserRole.SALES_ADMIN, UserRole.SYSTEM_ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete referral (soft delete)' })
   async deleteReferral(@Param('id') id: string) {

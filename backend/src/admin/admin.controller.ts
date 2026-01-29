@@ -55,8 +55,8 @@ export class AdminController {
 
   @Post('affiliates/:id/reset-password')
   @ApiOperation({ summary: 'Send password reset for affiliate user' })
-  async resetAffiliatePassword(@Param('id') id: string) {
-    return this.adminService.resetAffiliatePassword(id);
+  async resetAffiliatePassword(@Param('id') id: string, @Body('newPassword') newPassword: string) {
+    return this.adminService.resetAffiliatePassword(id, newPassword);
   }
 
   @Post('affiliates/:id/block')

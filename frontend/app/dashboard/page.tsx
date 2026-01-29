@@ -10,6 +10,7 @@ import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import toast from 'react-hot-toast'
+import { phoneCountries } from '@/lib/phoneCountries'
 
 type ReferralRow = {
   id: string
@@ -73,6 +74,58 @@ const getReferralPhone = (referral: ReferralRow) =>
     ? referral.contactPhone || referral.phone || ''
     : referral.phone || referral.contactPhone || ''
 
+const PhoneSelector = ({
+  country,
+  setCountry,
+  number,
+  setNumber,
+  placeholder,
+}: {
+  country: (typeof phoneCountries)[number]
+  setCountry: (country: (typeof phoneCountries)[number]) => void
+  number: string
+  setNumber: (value: string) => void
+  placeholder: string
+}) => (
+  <div className="mt-2 flex w-full items-center rounded-full border border-gray-200 bg-white shadow-sm focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-200">
+    <div className="relative">
+      <select
+        value={country.code}
+        onChange={(event) => {
+          const next = phoneCountries.find((item) => item.code === event.target.value)
+          if (next) setCountry(next)
+        }}
+        className="h-full w-28 appearance-none bg-transparent py-3 pl-4 pr-8 text-sm text-gray-900 focus:outline-none truncate"
+      >
+        {phoneCountries.map((item) => (
+          <option key={item.code} value={item.code}>
+            {item.flag} {item.name} ({item.dial})
+          </option>
+        ))}
+      </select>
+      <svg
+        className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400"
+        viewBox="0 0 20 20"
+        fill="currentColor"
+      >
+        <path
+          fillRule="evenodd"
+          d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.24 4.5a.75.75 0 0 1-1.08 0l-4.24-4.5a.75.75 0 0 1 .02-1.06Z"
+          clipRule="evenodd"
+        />
+      </svg>
+    </div>
+    <div className="h-6 w-px bg-gray-200" />
+    <input
+      type="tel"
+      value={number}
+      onChange={(event) => setNumber(event.target.value)}
+      placeholder={placeholder}
+      className="flex-1 bg-transparent px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
+    />
+  </div>
+)
+
 const getBackendBaseUrl = () => {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
   return apiUrl.replace(/\/api\/?$/, '')
@@ -110,6 +163,16 @@ export default function DashboardPage() {
     jobTitle: '',
     linkedin: '',
   })
+  const [contractStart, setContractStart] = useState('')
+  const [contractEnd, setContractEnd] = useState('')
+  const [referralPhoneCountry, setReferralPhoneCountry] = useState(
+    phoneCountries.find((item) => item.code === 'US') || phoneCountries[0]
+  )
+  const [contactPhoneCountry, setContactPhoneCountry] = useState(
+    phoneCountries.find((item) => item.code === 'US') || phoneCountries[0]
+  )
+  const [referralPhoneNumber, setReferralPhoneNumber] = useState('')
+  const [contactPhoneNumber, setContactPhoneNumber] = useState('')
   const profileMenuRef = useRef<HTMLDivElement | null>(null)
   const exportMenuRef = useRef<HTMLDivElement | null>(null)
   const filterMenuRef = useRef<HTMLDivElement | null>(null)
@@ -151,6 +214,27 @@ export default function DashboardPage() {
   const affiliateEmail = affiliateData.email || data?.user?.email || ''
   const referralRows: ReferralRow[] = useMemo(() => data?.referrals || [], [data])
   const stats = data?.stats || {}
+
+  useEffect(() => {
+    const nextDuration = [contractStart, contractEnd].filter(Boolean).join(' - ')
+    setReferralForm((prev) => ({ ...prev, contractDuration: nextDuration }))
+  }, [contractStart, contractEnd])
+
+  useEffect(() => {
+    const trimmed = referralPhoneNumber.trim()
+    setReferralForm((prev) => ({
+      ...prev,
+      phone: trimmed ? `${referralPhoneCountry.dial} ${trimmed}` : '',
+    }))
+  }, [referralPhoneCountry, referralPhoneNumber])
+
+  useEffect(() => {
+    const trimmed = contactPhoneNumber.trim()
+    setReferralForm((prev) => ({
+      ...prev,
+      contactPhone: trimmed ? `${contactPhoneCountry.dial} ${trimmed}` : '',
+    }))
+  }, [contactPhoneCountry, contactPhoneNumber])
 
   const exportRows = useMemo<ExportRow[]>(() => {
     return referralRows.map((referral, index) => ({
@@ -221,6 +305,10 @@ export default function DashboardPage() {
         jobTitle: '',
         linkedin: '',
       })
+      setContractStart('')
+      setContractEnd('')
+      setReferralPhoneNumber('')
+      setContactPhoneNumber('')
       setStep(1)
     },
     onError: (error: any) => {
@@ -487,20 +575,48 @@ export default function DashboardPage() {
                       />
                       <input
                         value={referralForm.phone}
-                        onChange={(event) =>
-                          setReferralForm((prev) => ({ ...prev, phone: event.target.value }))
-                        }
-                        className="rounded-full border border-gray-200 px-4 py-3 text-sm text-gray-900"
+                        readOnly
+                        className="hidden"
+                      />
+                      <PhoneSelector
+                        country={referralPhoneCountry}
+                        setCountry={setReferralPhoneCountry}
+                        number={referralPhoneNumber}
+                        setNumber={setReferralPhoneNumber}
                         placeholder="Phone"
                       />
-                      <input
-                        value={referralForm.contractDuration}
-                        onChange={(event) =>
-                          setReferralForm((prev) => ({ ...prev, contractDuration: event.target.value }))
-                        }
-                        className="rounded-full border border-gray-200 px-4 py-3 text-sm text-gray-900"
-                        placeholder="Contract duration (if known)"
-                      />
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="relative">
+                          <input
+                            type="date"
+                            value={contractStart}
+                            onChange={(event) => setContractStart(event.target.value)}
+                            className="w-full rounded-full border border-gray-200 px-4 py-3 pr-10 text-sm text-gray-900"
+                          />
+                          <svg
+                            className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path d="M6 2a1 1 0 0 1 1 1v1h6V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 1 1 2 0v1Zm12 8v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6h16Z" />
+                          </svg>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="date"
+                            value={contractEnd}
+                            onChange={(event) => setContractEnd(event.target.value)}
+                            className="w-full rounded-full border border-gray-200 px-4 py-3 pr-10 text-sm text-gray-900"
+                          />
+                          <svg
+                            className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path d="M6 2a1 1 0 0 1 1 1v1h6V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 1 1 2 0v1Zm12 8v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6h16Z" />
+                          </svg>
+                        </div>
+                      </div>
                       <input
                         value={referralForm.workCountry}
                         onChange={(event) =>
@@ -517,14 +633,19 @@ export default function DashboardPage() {
                         className="rounded-full border border-gray-200 px-4 py-3 text-sm text-gray-900"
                         placeholder="Nationality (if known)"
                       />
-                      <input
+                      <select
                         value={referralForm.maritalStatus}
                         onChange={(event) =>
                           setReferralForm((prev) => ({ ...prev, maritalStatus: event.target.value }))
                         }
-                        className="rounded-full border border-gray-200 px-4 py-3 text-sm text-gray-900"
-                        placeholder="Marital status (if known)"
-                      />
+                        className="rounded-full border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900"
+                      >
+                        <option value="">Marital status</option>
+                        <option value="Single">Single</option>
+                        <option value="Married">Married</option>
+                        <option value="Divorced">Divorced</option>
+                        <option value="Widowed">Widowed</option>
+                      </select>
                     </div>
                     <textarea
                       value={referralForm.notes}
@@ -590,10 +711,14 @@ export default function DashboardPage() {
                       />
                       <input
                         value={referralForm.contactPhone}
-                        onChange={(event) =>
-                          setReferralForm((prev) => ({ ...prev, contactPhone: event.target.value }))
-                        }
-                        className="rounded-full border border-gray-200 px-4 py-3 text-sm text-gray-900"
+                        readOnly
+                        className="hidden"
+                      />
+                      <PhoneSelector
+                        country={contactPhoneCountry}
+                        setCountry={setContactPhoneCountry}
+                        number={contactPhoneNumber}
+                        setNumber={setContactPhoneNumber}
                         placeholder="Phone"
                       />
                       <input
