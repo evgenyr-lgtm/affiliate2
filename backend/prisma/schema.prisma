@@ -57,8 +57,12 @@ enum PaymentTerm {
 }
 
 enum DocumentType {
-  Marketing
-  Legal
+  guide
+  corporate_brochure
+  one_pager
+  terms_and_conditions
+  banner
+  other
 }
 
 model User {
@@ -67,6 +71,9 @@ model User {
   password      String
   role          UserRole  @default(AFFILIATE)
   isBlocked     Boolean   @default(false)
+  firstName     String?
+  lastName      String?
+  avatar        String?
   emailVerified Boolean   @default(false)
   emailVerifyToken String?
   emailVerifyExpires DateTime?
@@ -172,6 +179,7 @@ model Document {
   name        String
   type        DocumentType
   fileUrl     String
+  isHidden    Boolean       @default(false)
   uploadedAt  DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   deletedAt   DateTime?
@@ -193,6 +201,7 @@ model Setting {
 model EmailTemplate {
   id          String   @id @default(uuid())
   name        String   @unique
+  description String?
   subject     String
   body        String   @db.Text
   enabled     Boolean  @default(true)

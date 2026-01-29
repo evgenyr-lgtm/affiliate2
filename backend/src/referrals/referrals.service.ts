@@ -103,6 +103,13 @@ export class ReferralsService {
       );
     }
 
+    if (dto.status === ReferralStatus.approved && referral.status !== ReferralStatus.approved) {
+      await this.emailService.sendReferralApproved(
+        referral.affiliate.user.email,
+        `${referral.affiliate.firstName} ${referral.affiliate.lastName}`,
+      );
+    }
+
     return updated;
   }
 

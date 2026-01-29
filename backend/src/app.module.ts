@@ -14,6 +14,7 @@ import { ZohoModule } from './zoho/zoho.module';
 import { SettingsModule } from './settings/settings.module';
 import { AuditModule } from './audit/audit.module';
 import { HealthModule } from './health/health.module';
+import { EmailTemplatesModule } from './email-templates/email-templates.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { HealthModule } from './health/health.module';
     EmailModule,
     ZohoModule,
     SettingsModule,
+    EmailTemplatesModule,
     AuditModule,
     HealthModule,
   ],

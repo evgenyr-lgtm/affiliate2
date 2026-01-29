@@ -15,6 +15,25 @@ type DocumentRow = {
   uploadedAt: string
 }
 
+const documentTypeLabel = (value: string) => {
+  switch (value) {
+    case 'guide':
+      return 'Guide'
+    case 'corporate_brochure':
+      return 'Corporate Brochure'
+    case 'one_pager':
+      return 'One-pager'
+    case 'terms_and_conditions':
+      return 'Terms & Conditions'
+    case 'banner':
+      return 'Banner'
+    case 'other':
+      return 'Other'
+    default:
+      return value
+  }
+}
+
 const formatDate = (value?: string) => {
   if (!value) return '-'
   const date = new Date(value)
@@ -179,7 +198,7 @@ export default function MarketingMaterialsPage() {
                         <tr key={doc.id} className="text-gray-700">
                           <td className="px-4 py-3">{doc.name}</td>
                           <td className="px-4 py-3">{formatDate(doc.uploadedAt)}</td>
-                          <td className="px-4 py-3">{doc.type}</td>
+                          <td className="px-4 py-3">{documentTypeLabel(doc.type)}</td>
                           <td className="px-4 py-3">
                             <a
                               href={fileLink}

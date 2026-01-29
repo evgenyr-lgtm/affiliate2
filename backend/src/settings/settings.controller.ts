@@ -10,7 +10,7 @@ import { UserRole } from '@prisma/client';
 @ApiTags('Settings')
 @Controller('settings')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.SYSTEM_ADMIN)
+@Roles(UserRole.SYSTEM_ADMIN, UserRole.MARKETING_ADMIN, UserRole.SALES_ADMIN)
 @ApiBearerAuth()
 export class SettingsController {
   constructor(private readonly settingsService: SettingsService) {}

@@ -55,6 +55,25 @@ type ReferralRow = {
   }
 }
 
+type DocumentRow = {
+  id: string
+  name: string
+  type: string
+  fileUrl: string
+  uploadedAt: string
+  isHidden?: boolean
+}
+
+type EmailTemplateRow = {
+  id: string
+  name: string
+  description?: string | null
+  subject: string
+  body: string
+  enabled: boolean
+  variables?: string[]
+}
+
 type ExportRow = Record<string, string | number>
 
 const statusOptions = [
@@ -88,6 +107,14 @@ const paymentStatusOptions = [
 ]
 
 const currencyOptions = ['USD', 'EUR', 'GBP', 'RUB']
+const documentTypeOptions = [
+  { value: 'guide', label: 'Guide' },
+  { value: 'corporate_brochure', label: 'Corporate Brochure' },
+  { value: 'one_pager', label: 'One-pager' },
+  { value: 'terms_and_conditions', label: 'Terms & Conditions' },
+  { value: 'banner', label: 'Banner' },
+  { value: 'other', label: 'Other' },
+]
 
 type PasswordStrength = 'Easy' | 'Medium' | 'Strong'
 
@@ -111,6 +138,130 @@ const formatDate = (value?: string) => {
   if (Number.isNaN(date.getTime())) return '-'
   return new Intl.DateTimeFormat('en-GB').format(date)
 }
+
+const formatInputDate = (value?: string) => {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const year = date.getFullYear()
+  const month = `${date.getMonth() + 1}`.padStart(2, '0')
+  const day = `${date.getDate()}`.padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const buildShareLinks = (url: string) => ({
+  Telegram: `https://t.me/share/url?url=${encodeURIComponent(url)}`,
+  WhatsApp: `https://wa.me/?text=${encodeURIComponent(url)}`,
+  LinkedIn: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`,
+  Email: `mailto:?subject=${encodeURIComponent('Marketing Materials')}&body=${encodeURIComponent(url)}`,
+  Facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
+})
+
+const getBackendBaseUrl = () => {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
+  return apiUrl.replace(/\/api\/?$/, '')
+}
+
+const templateGroups = {
+  manager: [
+    {
+      name: 'New Affiliate Registration',
+      description: 'Sent to a manager when a new affiliate registers.',
+      subject: 'A new affiliate has registered on your site | {first_name}{last_name}',
+      body:
+        'A new affiliate has registered on your site, https://accessfinancial.com\n\n' +
+        'Account Type: {account_type}\n\n' +
+        'First Name: {first_name}\n' +
+        'Last Name: {last_name}\n' +
+        'Phone: {phone}\n' +
+        'Email: {user_email}\n' +
+        'Company: {company}\n' +
+        'Country: {country}\n\n' +
+        'Kind regards,\n' +
+        'Access Financial Team',
+    },
+    {
+      name: 'New Referral',
+      description: 'Sent to a manager when a new referral is created.',
+      subject: 'A new referral has been created | {first_name}{last_name}',
+      body:
+        'A new referral has been created on your site, https://accessfinancial.com\n\n' +
+        'Referral Name: {first_name} {last_name}\n' +
+        'Email: {user_email}\n' +
+        'Phone: {phone}\n' +
+        'Company: {company}\n' +
+        'Country: {country}\n\n' +
+        'Kind regards,\n' +
+        'Access Financial Team',
+    },
+  ],
+  affiliate: [
+    {
+      name: 'Application Pending',
+      description: 'Sent when an affiliate registers and approval is required.',
+      subject: 'Your application is pending | {first_name}{last_name}',
+      body:
+        'Hi {first_name},\n\n' +
+        'Thank you for registering. Your application is currently pending review.\n\n' +
+        'Kind regards,\n' +
+        'Access Financial Team',
+    },
+    {
+      name: 'Application Rejected',
+      description: 'Sent when an affiliate application is rejected.',
+      subject: 'Your application was rejected | {first_name}{last_name}',
+      body:
+        'Hi {first_name},\n\n' +
+        'We are sorry to inform you that your application was rejected.\n\n' +
+        'Kind regards,\n' +
+        'Access Financial Team',
+    },
+    {
+      name: 'New Referral',
+      description: 'Sent to affiliates when they add a new referral.',
+      subject: 'New referral submitted | {first_name}{last_name}',
+      body:
+        'Hi {first_name},\n\n' +
+        'Your new referral has been submitted successfully.\n\n' +
+        'Kind regards,\n' +
+        'Access Financial Team',
+    },
+    {
+      name: 'Referral Approved',
+      description: 'Sent when a referral is approved.',
+      subject: 'Referral approved | {first_name}{last_name}',
+      body:
+        'Hi {first_name},\n\n' +
+        'Your referral has been approved.\n\n' +
+        'Kind regards,\n' +
+        'Access Financial Team',
+    },
+    {
+      name: 'Payment Done',
+      description: 'Sent to an affiliate when a payment is processed.',
+      subject: 'Payment processed | {first_name}{last_name}',
+      body:
+        'Hi {first_name},\n\n' +
+        'Your payment has been processed.\n\n' +
+        'Kind regards,\n' +
+        'Access Financial Team',
+    },
+  ],
+}
+
+const availableTags = [
+  '{name}',
+  '{first_name}',
+  '{last_name}',
+  '{account_type}',
+  '{phone}',
+  '{user_email}',
+  '{company}',
+  '{company_name}',
+  '{country}',
+  '{affiliate_id}',
+  '{referral_url}',
+]
 
 const labelFrom = (value: string, options: { value: string; label: string }[]) =>
   options.find((option) => option.value === value)?.label || value
@@ -142,14 +293,29 @@ export default function AdminPage() {
   const [showFilters, setShowFilters] = useState(false)
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
   const [adminMenuOpen, setAdminMenuOpen] = useState(false)
-  const [showAdminPasswordModal, setShowAdminPasswordModal] = useState(false)
-  const [adminPasswordCurrent, setAdminPasswordCurrent] = useState('')
-  const [adminPasswordNext, setAdminPasswordNext] = useState('')
-  const [adminPasswordConfirm, setAdminPasswordConfirm] = useState('')
   const [resetAffiliateId, setResetAffiliateId] = useState<string | null>(null)
   const [resetAffiliatePassword, setResetAffiliatePassword] = useState('')
   const [resetAffiliateConfirm, setResetAffiliateConfirm] = useState('')
   const [deleteAffiliateId, setDeleteAffiliateId] = useState<string | null>(null)
+  const [selectedAffiliate, setSelectedAffiliate] = useState<AffiliateRow | null>(null)
+  const [selectedReferral, setSelectedReferral] = useState<ReferralRow | null>(null)
+  const [documentEditingId, setDocumentEditingId] = useState<string | null>(null)
+  const [documentDrafts, setDocumentDrafts] = useState<Record<string, any>>({})
+  const [openShareDocumentId, setOpenShareDocumentId] = useState<string | null>(null)
+  const [notificationEmails, setNotificationEmails] = useState<string[]>([
+    'marketing@accessfinancial.com',
+    '',
+  ])
+  const [templatesExpanded, setTemplatesExpanded] = useState<Record<string, boolean>>({})
+  const [previewTemplate, setPreviewTemplate] = useState<EmailTemplateRow | null>(null)
+  const [showNewTemplateModal, setShowNewTemplateModal] = useState(false)
+  const [newTemplateName, setNewTemplateName] = useState('')
+  const [newTemplateDescription, setNewTemplateDescription] = useState('')
+  const [newTemplateSubject, setNewTemplateSubject] = useState('')
+  const [newTemplateBody, setNewTemplateBody] = useState('')
+  const [maintenanceEnabled, setMaintenanceEnabled] = useState(false)
+  const [templatesSeeded, setTemplatesSeeded] = useState(false)
+  const [templateDrafts, setTemplateDrafts] = useState<Record<string, any>>({})
   const [visibleColumns, setVisibleColumns] = useState({
     email: false,
     phone: false,
@@ -171,6 +337,8 @@ export default function AdminPage() {
   const affiliateExportRef = useRef<HTMLDivElement | null>(null)
   const referralFilterRef = useRef<HTMLDivElement | null>(null)
   const referralExportRef = useRef<HTMLDivElement | null>(null)
+  const documentShareRef = useRef<HTMLDivElement | null>(null)
+  const baseUrl = getBackendBaseUrl()
 
   useEffect(() => {
     const token = Cookies.get('accessToken')
@@ -201,11 +369,21 @@ export default function AdminPage() {
       ) {
         setReferralExportMenuOpen(false)
       }
+      if (openShareDocumentId && documentShareRef.current && !documentShareRef.current.contains(target)) {
+        setOpenShareDocumentId(null)
+      }
     }
 
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [adminMenuOpen, exportMenuOpen, referralExportMenuOpen, showFilters, showReferralFilters])
+  }, [
+    adminMenuOpen,
+    exportMenuOpen,
+    referralExportMenuOpen,
+    showFilters,
+    showReferralFilters,
+    openShareDocumentId,
+  ])
 
   const { data: affiliates, isLoading: affiliatesLoading } = useQuery({
     queryKey: ['admin-affiliates'],
@@ -219,6 +397,30 @@ export default function AdminPage() {
     queryKey: ['admin-referrals'],
     queryFn: async () => {
       const response = await api.get('/referrals')
+      return response.data
+    },
+  })
+
+  const { data: documents, isLoading: documentsLoading } = useQuery({
+    queryKey: ['admin-documents'],
+    queryFn: async () => {
+      const response = await api.get('/documents/admin')
+      return response.data
+    },
+  })
+
+  const { data: settingsData } = useQuery({
+    queryKey: ['admin-settings'],
+    queryFn: async () => {
+      const response = await api.get('/settings')
+      return response.data
+    },
+  })
+
+  const { data: templates, isLoading: templatesLoading } = useQuery({
+    queryKey: ['email-templates'],
+    queryFn: async () => {
+      const response = await api.get('/email-templates')
       return response.data
     },
   })
@@ -251,9 +453,76 @@ export default function AdminPage() {
     setReferralDrafts(nextDrafts)
   }, [referrals])
 
-  const adminPasswordStrength = adminPasswordNext
-    ? getPasswordStrength(adminPasswordNext)
-    : null
+  useEffect(() => {
+    if (!documents) return
+    const nextDrafts: Record<string, any> = {}
+    documents.forEach((doc: DocumentRow) => {
+      nextDrafts[doc.id] = {
+        name: doc.name,
+        type: doc.type,
+        uploadedAt: formatInputDate(doc.uploadedAt),
+        isHidden: Boolean(doc.isHidden),
+      }
+    })
+    setDocumentDrafts(nextDrafts)
+  }, [documents])
+
+  useEffect(() => {
+    if (!templates) return
+    const nextDrafts: Record<string, any> = {}
+    templates.forEach((template: EmailTemplateRow) => {
+      nextDrafts[template.id] = {
+        subject: template.subject,
+        body: template.body,
+        enabled: template.enabled,
+      }
+    })
+    setTemplateDrafts(nextDrafts)
+  }, [templates])
+
+  useEffect(() => {
+    if (!settingsData) return
+    const emailsSetting = settingsData.find((setting: any) => setting.key === 'manager_notification_emails')
+    if (emailsSetting?.value) {
+      try {
+        const parsed = JSON.parse(emailsSetting.value)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const normalized = parsed.map((email: string) => email || '')
+          const base = normalized.length >= 2 ? normalized : [...normalized, '', '']
+          setNotificationEmails(base.slice(0, Math.max(base.length, 2)))
+        }
+      } catch {
+        // ignore
+      }
+    } else {
+      setNotificationEmails(['marketing@accessfinancial.com', ''])
+    }
+    const maintenanceSetting = settingsData.find((setting: any) => setting.key === 'maintenance_mode')
+    setMaintenanceEnabled(maintenanceSetting?.value === 'true')
+  }, [settingsData])
+
+  useEffect(() => {
+    if (!templates || templatesSeeded) return
+    const existingNames = new Set((templates as EmailTemplateRow[]).map((t) => t.name))
+    const defaults = [...templateGroups.manager, ...templateGroups.affiliate]
+    const missing = defaults.filter((template) => !existingNames.has(template.name))
+    if (missing.length === 0) {
+      setTemplatesSeeded(true)
+      return
+    }
+    missing.forEach((template) => {
+      createTemplateMutation.mutate({
+        name: template.name,
+        description: template.description,
+        subject: template.subject,
+        body: template.body,
+        enabled: true,
+        variables: availableTags,
+      })
+    })
+    setTemplatesSeeded(true)
+  }, [templates, templatesSeeded, createTemplateMutation])
+
   const resetPasswordStrength = resetAffiliatePassword
     ? getPasswordStrength(resetAffiliatePassword)
     : null
@@ -313,21 +582,6 @@ export default function AdminPage() {
     },
   })
 
-  const adminChangePasswordMutation = useMutation({
-    mutationFn: async (data: { oldPassword: string; newPassword: string }) => {
-      return api.post('/auth/change-password', data)
-    },
-    onSuccess: () => {
-      toast.success('Password updated')
-      setShowAdminPasswordModal(false)
-      setAdminPasswordCurrent('')
-      setAdminPasswordNext('')
-      setAdminPasswordConfirm('')
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to update password')
-    },
-  })
 
   const updateReferralMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
@@ -356,6 +610,111 @@ export default function AdminPage() {
     },
   })
 
+  const uploadDocumentMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData()
+      formData.append('file', file)
+      return api.post('/documents', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-documents'] })
+      toast.success('Document uploaded')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to upload document')
+    },
+  })
+
+  const updateDocumentMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      return api.put(`/documents/${id}`, data)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-documents'] })
+      toast.success('Document updated')
+      setDocumentEditingId(null)
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update document')
+    },
+  })
+
+  const deleteDocumentMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return api.delete(`/documents/${id}`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-documents'] })
+      toast.success('Document deleted')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete document')
+    },
+  })
+
+  const saveNotificationEmailsMutation = useMutation({
+    mutationFn: async (emails: string[]) => {
+      return api.put('/settings/manager_notification_emails', {
+        value: JSON.stringify(emails),
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-settings'] })
+      toast.success('Notification emails saved')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to save emails')
+    },
+  })
+
+  const saveMaintenanceMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      return api.put('/settings/maintenance_mode', {
+        value: enabled ? 'true' : 'false',
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-settings'] })
+      toast.success('Maintenance mode updated')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update maintenance mode')
+    },
+  })
+
+  const updateTemplateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      return api.put(`/email-templates/${id}`, data)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['email-templates'] })
+      toast.success('Template updated')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update template')
+    },
+  })
+
+  const createTemplateMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return api.post('/email-templates', data)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['email-templates'] })
+      toast.success('Template created')
+      setShowNewTemplateModal(false)
+      setNewTemplateName('')
+      setNewTemplateDescription('')
+      setNewTemplateSubject('')
+      setNewTemplateBody('')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create template')
+    },
+  })
+
   const handleDraftChange = (affiliateId: string, patch: any) => {
     setDrafts((prev) => ({
       ...prev,
@@ -364,6 +723,32 @@ export default function AdminPage() {
         ...patch,
       },
     }))
+  }
+
+  const handleDocumentDraftChange = (docId: string, patch: any) => {
+    setDocumentDrafts((prev) => ({
+      ...prev,
+      [docId]: {
+        ...prev[docId],
+        ...patch,
+      },
+    }))
+  }
+
+  const handleTemplateDraftChange = (templateId: string, patch: any) => {
+    setTemplateDrafts((prev) => ({
+      ...prev,
+      [templateId]: {
+        ...prev[templateId],
+        ...patch,
+      },
+    }))
+  }
+
+  const handleUploadFiles = (fileList: FileList | File[]) => {
+    Array.from(fileList).forEach((file) => {
+      uploadDocumentMutation.mutate(file)
+    })
   }
 
   const handleReferralDraftChange = (referralId: string, patch: any) => {
@@ -375,6 +760,9 @@ export default function AdminPage() {
       },
     }))
   }
+
+  const documentRows: DocumentRow[] = useMemo(() => documents || [], [documents])
+  const templateRows: EmailTemplateRow[] = useMemo(() => templates || [], [templates])
 
   const affiliateExportRows = useMemo<ExportRow[]>(() => {
     if (!affiliates) return []
@@ -519,12 +907,9 @@ export default function AdminPage() {
                   <div className="absolute right-0 mt-2 w-48 rounded-md border border-gray-200 bg-white shadow-lg">
                     <button
                       className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-                      onClick={() => {
-                        setAdminMenuOpen(false)
-                        setShowAdminPasswordModal(true)
-                      }}
+                      onClick={() => router.push('/admin/account-settings')}
                     >
-                      Change Password
+                      Account Settings
                     </button>
                   </div>
                 )}
@@ -715,7 +1100,13 @@ export default function AdminPage() {
                             <tr key={affiliate.id} className="text-gray-700">
                               <td className="px-4 py-3">{index + 1}</td>
                               <td className="px-4 py-3">
-                                {affiliate.firstName} {affiliate.lastName}
+                                <button
+                                  type="button"
+                                  className="text-left text-gray-700 hover:underline"
+                                  onClick={() => setSelectedAffiliate(affiliate)}
+                                >
+                                  {affiliate.firstName} {affiliate.lastName}
+                                </button>
                               </td>
                               <td className="px-4 py-3">{formatDate(affiliate.createdAt)}</td>
                               <td className="px-4 py-3">
@@ -1020,7 +1411,15 @@ export default function AdminPage() {
                           return (
                             <tr key={referral.id} className="text-gray-700">
                               <td className="px-4 py-3">{index + 1}</td>
-                              <td className="px-4 py-3">{getReferralName(referral)}</td>
+                              <td className="px-4 py-3">
+                                <button
+                                  type="button"
+                                  className="text-left text-gray-700 hover:underline"
+                                  onClick={() => setSelectedReferral(referral)}
+                                >
+                                  {getReferralName(referral)}
+                                </button>
+                              </td>
                               <td className="px-4 py-3">{formatDate(referral.entryDate)}</td>
                               <td className="px-4 py-3">
                                 <select
@@ -1147,92 +1546,516 @@ export default function AdminPage() {
           )}
 
           {activeTab === 'settings' && (
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Settings</h2>
-              <div className="bg-white shadow rounded-lg p-6">
-                <p className="text-gray-600">Settings management coming soon...</p>
-              </div>
+            <div className="space-y-8">
+              <section className="bg-white shadow rounded-lg p-6 space-y-6">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Upload Documents</h2>
+                  <p className="text-sm text-gray-500">
+                    Drag & drop files here, or click to upload (PDF, Word, Excel, PNG, JPG up to 20 MB).
+                  </p>
+                </div>
+                <label
+                  className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 px-6 py-10 text-center text-sm text-gray-500 hover:border-gray-300 cursor-pointer"
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={(event) => {
+                    event.preventDefault()
+                    if (event.dataTransfer.files?.length) {
+                      handleUploadFiles(event.dataTransfer.files)
+                    }
+                  }}
+                >
+                  <input
+                    type="file"
+                    multiple
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+                    className="hidden"
+                    onChange={(event) => {
+                      if (event.target.files?.length) {
+                        handleUploadFiles(event.target.files)
+                        event.target.value = ''
+                      }
+                    }}
+                  />
+                  <span className="font-medium text-gray-700">Click to upload</span>
+                  <span className="text-xs text-gray-400 mt-2">or drag & drop</span>
+                </label>
+
+                {documentsLoading ? (
+                  <div className="text-sm text-gray-500">Loading documents...</div>
+                ) : (
+                  <div className="overflow-auto">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50 text-gray-600">
+                        <tr>
+                          <th className="px-4 py-3 text-left font-semibold">Document Name</th>
+                          <th className="px-4 py-3 text-left font-semibold">Date of Upload</th>
+                          <th className="px-4 py-3 text-left font-semibold">Type</th>
+                          <th className="px-4 py-3 text-left font-semibold">Status</th>
+                          <th className="px-4 py-3 text-left font-semibold">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {documentRows.map((doc) => {
+                          const isEditing = documentEditingId === doc.id
+                          const draft = documentDrafts[doc.id] || {}
+                          const typeLabel =
+                            documentTypeOptions.find((option) => option.value === doc.type)?.label ||
+                            doc.type
+                          const fileLink = `${baseUrl}${doc.fileUrl}`
+                          const shareLinks = buildShareLinks(fileLink)
+                          return (
+                            <tr key={doc.id} className="text-gray-700">
+                              <td className="px-4 py-3">
+                                {isEditing ? (
+                                  <input
+                                    value={draft.name || ''}
+                                    onChange={(event) =>
+                                      handleDocumentDraftChange(doc.id, { name: event.target.value })
+                                    }
+                                    className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                                  />
+                                ) : (
+                                  doc.name
+                                )}
+                              </td>
+                              <td className="px-4 py-3">
+                                {isEditing ? (
+                                  <input
+                                    type="date"
+                                    value={draft.uploadedAt || ''}
+                                    onChange={(event) =>
+                                      handleDocumentDraftChange(doc.id, { uploadedAt: event.target.value })
+                                    }
+                                    className="rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                                  />
+                                ) : (
+                                  formatDate(doc.uploadedAt)
+                                )}
+                              </td>
+                              <td className="px-4 py-3">
+                                {isEditing ? (
+                                  <select
+                                    value={draft.type || doc.type}
+                                    onChange={(event) =>
+                                      handleDocumentDraftChange(doc.id, { type: event.target.value })
+                                    }
+                                    className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900"
+                                  >
+                                    {documentTypeOptions.map((option) => (
+                                      <option key={option.value} value={option.value}>
+                                        {option.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  typeLabel
+                                )}
+                              </td>
+                              <td className="px-4 py-3">
+                                {doc.isHidden ? (
+                                  <span className="text-xs font-semibold text-gray-500">Hidden</span>
+                                ) : (
+                                  <span className="text-xs font-semibold text-green-600">Visible</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  {!isEditing ? (
+                                    <button
+                                      className="rounded-md border border-gray-200 px-3 py-1 text-xs font-medium text-gray-700 hover:border-gray-300"
+                                      onClick={() => setDocumentEditingId(doc.id)}
+                                    >
+                                      Edit
+                                    </button>
+                                  ) : (
+                                    <button
+                                      className="rounded-md bg-[#2b36ff] px-3 py-1 text-xs font-semibold text-white hover:bg-[#2330f0]"
+                                      onClick={() =>
+                                        updateDocumentMutation.mutate({
+                                          id: doc.id,
+                                          data: {
+                                            name: draft.name,
+                                            type: draft.type,
+                                            uploadedAt: draft.uploadedAt || undefined,
+                                          },
+                                        })
+                                      }
+                                    >
+                                      Save
+                                    </button>
+                                  )}
+                                  <button
+                                    className="rounded-md border border-gray-200 px-3 py-1 text-xs font-medium text-gray-700 hover:border-gray-300"
+                                    onClick={() =>
+                                      updateDocumentMutation.mutate({
+                                        id: doc.id,
+                                        data: { isHidden: !doc.isHidden },
+                                      })
+                                    }
+                                  >
+                                    {doc.isHidden ? 'Show' : 'Hide'}
+                                  </button>
+                                  <a
+                                    href={fileLink}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="rounded-md border border-gray-200 px-3 py-1 text-xs font-medium text-gray-700 hover:border-gray-300"
+                                  >
+                                    Download
+                                  </a>
+                                  <div className="relative" ref={documentShareRef}>
+                                    <button
+                                      className="rounded-md border border-gray-200 px-3 py-1 text-xs font-medium text-gray-700 hover:border-gray-300"
+                                      onClick={() =>
+                                        setOpenShareDocumentId((prev) => (prev === doc.id ? null : doc.id))
+                                      }
+                                    >
+                                      Share
+                                    </button>
+                                    {openShareDocumentId === doc.id && (
+                                      <div className="absolute right-0 z-10 mt-2 w-44 rounded-md border border-gray-200 bg-white shadow-lg">
+                                        {Object.entries(shareLinks).map(([label, link]) => (
+                                          <a
+                                            key={label}
+                                            href={link}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                          >
+                                            {label}
+                                          </a>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <button
+                                    className="rounded-md border border-red-200 px-3 py-1 text-xs font-medium text-red-600 hover:border-red-300"
+                                    onClick={() => deleteDocumentMutation.mutate(doc.id)}
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+
+              <section className="bg-white shadow rounded-lg p-6 space-y-4">
+                <h2 className="text-xl font-semibold text-gray-900">Notification Emails</h2>
+                <p className="text-sm text-gray-500">*The email address(es) to receive notifications.</p>
+                <div className="space-y-3">
+                  {notificationEmails.map((email, index) => (
+                    <div key={index} className="flex items-center gap-3">
+                      <input
+                        value={email}
+                        onChange={(event) => {
+                          const next = [...notificationEmails]
+                          next[index] = event.target.value
+                          setNotificationEmails(next)
+                        }}
+                        className="flex-1 rounded-md border border-gray-200 px-4 py-2 text-sm text-gray-900"
+                        placeholder={`Email ${index + 1}`}
+                      />
+                      {index >= 2 && (
+                        <button
+                          className="text-sm text-red-500"
+                          onClick={() => {
+                            const next = notificationEmails.filter((_, idx) => idx !== index)
+                            setNotificationEmails(next)
+                          }}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between">
+                  <button
+                    className="rounded-md border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700"
+                    onClick={() => setNotificationEmails((prev) => [...prev, ''])}
+                  >
+                    Add More
+                  </button>
+                  <button
+                    className="rounded-md bg-[#2b36ff] px-4 py-2 text-sm font-semibold text-white"
+                    onClick={() => {
+                      const cleaned = notificationEmails.filter((email, index) => {
+                        if (index < 2) return true
+                        return email.trim().length > 0
+                      })
+                      saveNotificationEmailsMutation.mutate(cleaned)
+                      setNotificationEmails(cleaned.length >= 2 ? cleaned : [...cleaned, '', ''])
+                    }}
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </section>
+
+              <section className="bg-white shadow rounded-lg p-6 space-y-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-semibold text-gray-900">Email Templates</h2>
+                  <button
+                    className="rounded-md border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700"
+                    onClick={() => setShowNewTemplateModal(true)}
+                  >
+                    Add a New Template
+                  </button>
+                </div>
+
+                {templatesLoading ? (
+                  <div className="text-sm text-gray-500">Loading templates...</div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="space-y-4">
+                      <h3 className="text-sm font-semibold text-gray-700">
+                        Notifications sent to Portal Managers
+                      </h3>
+                      {templateGroups.manager.map((template) => {
+                        const row = templateRows.find((item) => item.name === template.name)
+                        if (!row) return null
+                        const isOpen = Boolean(templatesExpanded[row.id])
+                        const draft = templateDrafts[row.id] || {}
+                        return (
+                          <div key={row.id} className="rounded-md border border-gray-200 p-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-semibold text-gray-900">{row.name}</p>
+                                <p className="text-xs text-gray-500">{row.description || template.description}</p>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <button
+                                  className="text-sm text-gray-600"
+                                  onClick={() =>
+                                    setTemplatesExpanded((prev) => ({
+                                      ...prev,
+                                      [row.id]: !prev[row.id],
+                                    }))
+                                  }
+                                >
+                                  Configure
+                                </button>
+                                <label className="inline-flex items-center gap-2 text-sm text-gray-600">
+                                  <input
+                                    type="checkbox"
+                                    checked={draft.enabled ?? row.enabled}
+                                    onChange={(event) => {
+                                      const nextEnabled = event.target.checked
+                                      handleTemplateDraftChange(row.id, { enabled: nextEnabled })
+                                      updateTemplateMutation.mutate({
+                                        id: row.id,
+                                        data: { enabled: nextEnabled },
+                                      })
+                                    }}
+                                  />
+                                  {(draft.enabled ?? row.enabled) ? 'On' : 'Off'}
+                                </label>
+                              </div>
+                            </div>
+                            {isOpen && (
+                              <div className="mt-4 space-y-3">
+                                <input
+                                  value={draft.subject ?? row.subject}
+                                  onChange={(event) =>
+                                    handleTemplateDraftChange(row.id, { subject: event.target.value })
+                                  }
+                                  className="w-full rounded-md border border-gray-200 px-4 py-2 text-sm text-gray-900"
+                                />
+                                <textarea
+                                  value={draft.body ?? row.body}
+                                  onChange={(event) =>
+                                    handleTemplateDraftChange(row.id, { body: event.target.value })
+                                  }
+                                  rows={6}
+                                  className="w-full rounded-md border border-gray-200 px-4 py-2 text-sm text-gray-900"
+                                />
+                                <div className="flex flex-wrap gap-2 text-xs text-gray-500">
+                                  {availableTags.map((tag) => (
+                                    <span key={tag} className="rounded-full bg-gray-100 px-2 py-1">
+                                      {tag}
+                                    </span>
+                                  ))}
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <button
+                                    className="rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-700"
+                                    onClick={() =>
+                                      setPreviewTemplate({
+                                        ...row,
+                                        subject: draft.subject ?? row.subject,
+                                        body: draft.body ?? row.body,
+                                      })
+                                    }
+                                  >
+                                    Preview
+                                  </button>
+                                  <button
+                                    className="rounded-md bg-[#2b36ff] px-3 py-2 text-sm font-semibold text-white"
+                                    onClick={() =>
+                                      updateTemplateMutation.mutate({
+                                        id: row.id,
+                                        data: {
+                                          subject: draft.subject ?? row.subject,
+                                          body: draft.body ?? row.body,
+                                          enabled: draft.enabled ?? row.enabled,
+                                        },
+                                      })
+                                    }
+                                  >
+                                    Save Changes
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    <div className="space-y-4">
+                      <h3 className="text-sm font-semibold text-gray-700">
+                        Notifications sent to Affiliates
+                      </h3>
+                      {templateGroups.affiliate.map((template) => {
+                        const row = templateRows.find((item) => item.name === template.name)
+                        if (!row) return null
+                        const isOpen = Boolean(templatesExpanded[row.id])
+                        const draft = templateDrafts[row.id] || {}
+                        return (
+                          <div key={row.id} className="rounded-md border border-gray-200 p-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-semibold text-gray-900">{row.name}</p>
+                                <p className="text-xs text-gray-500">{row.description || template.description}</p>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <button
+                                  className="text-sm text-gray-600"
+                                  onClick={() =>
+                                    setTemplatesExpanded((prev) => ({
+                                      ...prev,
+                                      [row.id]: !prev[row.id],
+                                    }))
+                                  }
+                                >
+                                  Configure
+                                </button>
+                                <label className="inline-flex items-center gap-2 text-sm text-gray-600">
+                                  <input
+                                    type="checkbox"
+                                    checked={draft.enabled ?? row.enabled}
+                                    onChange={(event) => {
+                                      const nextEnabled = event.target.checked
+                                      handleTemplateDraftChange(row.id, { enabled: nextEnabled })
+                                      updateTemplateMutation.mutate({
+                                        id: row.id,
+                                        data: { enabled: nextEnabled },
+                                      })
+                                    }}
+                                  />
+                                  {(draft.enabled ?? row.enabled) ? 'On' : 'Off'}
+                                </label>
+                              </div>
+                            </div>
+                            {isOpen && (
+                              <div className="mt-4 space-y-3">
+                                <input
+                                  value={draft.subject ?? row.subject}
+                                  onChange={(event) =>
+                                    handleTemplateDraftChange(row.id, { subject: event.target.value })
+                                  }
+                                  className="w-full rounded-md border border-gray-200 px-4 py-2 text-sm text-gray-900"
+                                />
+                                <textarea
+                                  value={draft.body ?? row.body}
+                                  onChange={(event) =>
+                                    handleTemplateDraftChange(row.id, { body: event.target.value })
+                                  }
+                                  rows={6}
+                                  className="w-full rounded-md border border-gray-200 px-4 py-2 text-sm text-gray-900"
+                                />
+                                <div className="flex flex-wrap gap-2 text-xs text-gray-500">
+                                  {availableTags.map((tag) => (
+                                    <span key={tag} className="rounded-full bg-gray-100 px-2 py-1">
+                                      {tag}
+                                    </span>
+                                  ))}
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <button
+                                    className="rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-700"
+                                    onClick={() =>
+                                      setPreviewTemplate({
+                                        ...row,
+                                        subject: draft.subject ?? row.subject,
+                                        body: draft.body ?? row.body,
+                                      })
+                                    }
+                                  >
+                                    Preview
+                                  </button>
+                                  <button
+                                    className="rounded-md bg-[#2b36ff] px-3 py-2 text-sm font-semibold text-white"
+                                    onClick={() =>
+                                      updateTemplateMutation.mutate({
+                                        id: row.id,
+                                        data: {
+                                          subject: draft.subject ?? row.subject,
+                                          body: draft.body ?? row.body,
+                                          enabled: draft.enabled ?? row.enabled,
+                                        },
+                                      })
+                                    }
+                                  >
+                                    Save Changes
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </section>
+
+              <section className="bg-white shadow rounded-lg p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-semibold text-gray-900">
+                      Affiliate Portal Maintenance Mode
+                    </h2>
+                    <p className="text-sm text-gray-500">
+                      When enabled, users will see a maintenance message.
+                    </p>
+                  </div>
+                  <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={maintenanceEnabled}
+                      onChange={(event) => setMaintenanceEnabled(event.target.checked)}
+                    />
+                    {maintenanceEnabled ? 'On' : 'Off'}
+                  </label>
+                </div>
+                <button
+                  className="rounded-md bg-[#2b36ff] px-4 py-2 text-sm font-semibold text-white"
+                  onClick={() => saveMaintenanceMutation.mutate(maintenanceEnabled)}
+                >
+                  Save Changes
+                </button>
+              </section>
             </div>
           )}
         </div>
       </main>
-
-      {showAdminPasswordModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-900">Change Password</h3>
-            <div className="mt-4 space-y-3">
-              <input
-                type="password"
-                value={adminPasswordCurrent}
-                onChange={(event) => setAdminPasswordCurrent(event.target.value)}
-                className="w-full rounded-md border border-gray-200 px-4 py-3 text-sm text-gray-900"
-                placeholder="Current Password"
-              />
-              <input
-                type="password"
-                value={adminPasswordNext}
-                onChange={(event) => setAdminPasswordNext(event.target.value)}
-                className="w-full rounded-md border border-gray-200 px-4 py-3 text-sm text-gray-900"
-                placeholder="New Password"
-              />
-              <input
-                type="password"
-                value={adminPasswordConfirm}
-                onChange={(event) => setAdminPasswordConfirm(event.target.value)}
-                className="w-full rounded-md border border-gray-200 px-4 py-3 text-sm text-gray-900"
-                placeholder="Repeat Password"
-              />
-              {adminPasswordStrength && (
-                <p
-                  className={`text-xs font-medium ${
-                    adminPasswordStrength === 'Strong'
-                      ? 'text-green-600'
-                      : adminPasswordStrength === 'Medium'
-                      ? 'text-yellow-600'
-                      : 'text-red-600'
-                  }`}
-                >
-                  Strength: {adminPasswordStrength}
-                </p>
-              )}
-            </div>
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                className="rounded-md border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700"
-                onClick={() => setShowAdminPasswordModal(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="rounded-md bg-[#2b36ff] px-4 py-2 text-sm font-semibold text-white"
-                onClick={() => {
-                  if (!adminPasswordCurrent || !adminPasswordNext) {
-                    toast.error('Please fill in all password fields')
-                    return
-                  }
-                  if (adminPasswordNext !== adminPasswordConfirm) {
-                    toast.error('Passwords do not match')
-                    return
-                  }
-                  if (getPasswordStrength(adminPasswordNext) === 'Easy') {
-                    toast.error('Password is too weak')
-                    return
-                  }
-                  adminChangePasswordMutation.mutate({
-                    oldPassword: adminPasswordCurrent,
-                    newPassword: adminPasswordNext,
-                  })
-                }}
-              >
-                Save Changes
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {resetAffiliateId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
@@ -1328,6 +2151,175 @@ export default function AdminPage() {
                 }}
               >
                 Yes, I understand that. Proceed
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedAffiliate && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          onClick={() => setSelectedAffiliate(null)}
+        >
+          <div
+            className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Affiliate Details</h3>
+              <button
+                className="text-gray-500 hover:text-gray-700"
+                onClick={() => setSelectedAffiliate(null)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="mt-4 grid grid-cols-1 gap-3 text-sm text-gray-700">
+              <p><span className="font-semibold">Name:</span> {selectedAffiliate.firstName} {selectedAffiliate.lastName}</p>
+              <p><span className="font-semibold">Email:</span> {selectedAffiliate.user?.email || '-'}</p>
+              <p><span className="font-semibold">Phone:</span> {selectedAffiliate.phone || '-'}</p>
+              <p><span className="font-semibold">Account Type:</span> {selectedAffiliate.accountType}</p>
+              <p><span className="font-semibold">Company:</span> {selectedAffiliate.companyName || '-'}</p>
+              <p><span className="font-semibold">Status:</span> {labelFrom(selectedAffiliate.status, statusOptions)}</p>
+              <p><span className="font-semibold">Registered:</span> {formatDate(selectedAffiliate.createdAt)}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedReferral && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          onClick={() => setSelectedReferral(null)}
+        >
+          <div
+            className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Referral Details</h3>
+              <button
+                className="text-gray-500 hover:text-gray-700"
+                onClick={() => setSelectedReferral(null)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="mt-4 grid grid-cols-1 gap-3 text-sm text-gray-700">
+              <p><span className="font-semibold">Referral:</span> {getReferralName(selectedReferral)}</p>
+              <p><span className="font-semibold">Affiliate:</span> {selectedReferral.affiliate?.firstName} {selectedReferral.affiliate?.lastName}</p>
+              <p><span className="font-semibold">Email:</span> {getReferralEmail(selectedReferral) || '-'}</p>
+              <p><span className="font-semibold">Phone:</span> {getReferralPhone(selectedReferral) || '-'}</p>
+              <p><span className="font-semibold">Status:</span> {labelFrom(selectedReferral.status, referralStatusOptions)}</p>
+              <p><span className="font-semibold">Payment Status:</span> {labelFrom(selectedReferral.paymentStatus, paymentStatusOptions)}</p>
+              <p><span className="font-semibold">Date:</span> {formatDate(selectedReferral.entryDate)}</p>
+              <p><span className="font-semibold">Notes:</span> {selectedReferral.internalNotes || '-'}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {previewTemplate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Email Preview</h3>
+              <button
+                className="text-gray-500 hover:text-gray-700"
+                onClick={() => setPreviewTemplate(null)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="mt-4 space-y-3">
+              <div>
+                <p className="text-xs font-semibold text-gray-500">Subject</p>
+                <p className="text-sm text-gray-900">{previewTemplate.subject}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-500">Message</p>
+                <pre className="whitespace-pre-wrap rounded-md bg-gray-50 p-3 text-sm text-gray-800">
+                  {previewTemplate.body}
+                </pre>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button
+                className="rounded-md border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700"
+                onClick={() => setPreviewTemplate(null)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showNewTemplateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Add a New Template</h3>
+              <button
+                className="text-gray-500 hover:text-gray-700"
+                onClick={() => setShowNewTemplateModal(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="mt-4 space-y-3">
+              <input
+                value={newTemplateName}
+                onChange={(event) => setNewTemplateName(event.target.value)}
+                className="w-full rounded-md border border-gray-200 px-4 py-2 text-sm text-gray-900"
+                placeholder="Template Name"
+              />
+              <input
+                value={newTemplateDescription}
+                onChange={(event) => setNewTemplateDescription(event.target.value)}
+                className="w-full rounded-md border border-gray-200 px-4 py-2 text-sm text-gray-900"
+                placeholder="Description"
+              />
+              <input
+                value={newTemplateSubject}
+                onChange={(event) => setNewTemplateSubject(event.target.value)}
+                className="w-full rounded-md border border-gray-200 px-4 py-2 text-sm text-gray-900"
+                placeholder="Email Subject"
+              />
+              <textarea
+                value={newTemplateBody}
+                onChange={(event) => setNewTemplateBody(event.target.value)}
+                rows={6}
+                className="w-full rounded-md border border-gray-200 px-4 py-2 text-sm text-gray-900"
+                placeholder="Message"
+              />
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                className="rounded-md border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700"
+                onClick={() => setShowNewTemplateModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="rounded-md bg-[#2b36ff] px-4 py-2 text-sm font-semibold text-white"
+                onClick={() => {
+                  if (!newTemplateName || !newTemplateSubject || !newTemplateBody) {
+                    toast.error('Please fill in all required fields')
+                    return
+                  }
+                  createTemplateMutation.mutate({
+                    name: newTemplateName,
+                    description: newTemplateDescription,
+                    subject: newTemplateSubject,
+                    body: newTemplateBody,
+                    enabled: true,
+                    variables: availableTags,
+                  })
+                }}
+              >
+                Save Changes
               </button>
             </div>
           </div>

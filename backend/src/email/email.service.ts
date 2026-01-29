@@ -76,10 +76,15 @@ export class EmailService {
 
     const body = this.replaceVariables(template.body, {
       name: `${affiliate.firstName} ${affiliate.lastName}`,
+      first_name: affiliate.firstName,
+      last_name: affiliate.lastName,
       user_email: affiliate.user?.email || 'N/A',
       affiliate_id: affiliate.id,
       account_type: affiliate.accountType,
+      company: affiliate.companyName || 'N/A',
       company_name: affiliate.companyName || 'N/A',
+      phone: affiliate.phone || 'N/A',
+      country: 'N/A',
     });
 
     return this.sendEmail({
@@ -97,6 +102,8 @@ export class EmailService {
 
     const body = this.replaceVariables(template.body, {
       name,
+      first_name: name.split(' ')[0] || name,
+      last_name: name.split(' ').slice(1).join(' ') || '',
     });
 
     return this.sendEmail({
@@ -114,6 +121,8 @@ export class EmailService {
 
     const body = this.replaceVariables(template.body, {
       name,
+      first_name: name.split(' ')[0] || name,
+      last_name: name.split(' ').slice(1).join(' ') || '',
     });
 
     return this.sendEmail({
@@ -131,6 +140,8 @@ export class EmailService {
 
     const body = this.replaceVariables(template.body, {
       name,
+      first_name: name.split(' ')[0] || name,
+      last_name: name.split(' ').slice(1).join(' ') || '',
       amount: amount.toString(),
     });
 
@@ -152,13 +163,44 @@ export class EmailService {
       return;
     }
 
+    const referralName =
+      referral.accountType === 'company'
+        ? `${referral.contactFirstName || ''} ${referral.contactLastName || ''}`.trim()
+        : `${referral.firstName || ''} ${referral.lastName || ''}`.trim();
+
     const body = this.replaceVariables(template.body, {
       referral_url: `/admin/referrals/${referral.id}`,
       affiliate_id: referral.affiliateId,
+      first_name: referral.firstName || referral.contactFirstName || '',
+      last_name: referral.lastName || referral.contactLastName || '',
+      user_email: referral.email || referral.contactEmail || '',
+      phone: referral.phone || referral.contactPhone || '',
+      company: referral.companyName || '',
+      country: referral.country || referral.workCountry || '',
+      name: referralName,
     });
 
     return this.sendEmail({
       to: managerEmails,
+      subject: template.subject,
+      html: body,
+    });
+  }
+
+  async sendReferralApproved(email: string, name: string) {
+    const template = await this.getEmailTemplate('Referral Approved');
+    if (!template || !template.enabled) {
+      return;
+    }
+
+    const body = this.replaceVariables(template.body, {
+      name,
+      first_name: name.split(' ')[0] || name,
+      last_name: name.split(' ').slice(1).join(' ') || '',
+    });
+
+    return this.sendEmail({
+      to: email,
       subject: template.subject,
       html: body,
     });

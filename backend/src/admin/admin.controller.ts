@@ -1,12 +1,16 @@
-import { Controller, Get, Put, Post, Body, Param, Query, UseGuards, Request, Delete } from '@nestjs/common';
+import { Controller, Get, Put, Post, Body, Param, Query, UseGuards, Request, Delete, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { UpdateCommissionDto } from './dto/update-commission.dto';
 import { UpdateAffiliateAdminDto } from './dto/update-affiliate-admin.dto';
+import { UpdateAdminProfileDto } from './dto/update-admin-profile.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole, AffiliateStatus } from '@prisma/client';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
 
 @ApiTags('Admin')
 @Controller('admin')
@@ -69,5 +73,44 @@ export class AdminController {
   @ApiOperation({ summary: 'Delete affiliate user' })
   async deleteAffiliate(@Param('id') id: string) {
     return this.adminService.deleteAffiliate(id);
+  }
+
+  @Get('profile')
+  @ApiOperation({ summary: 'Get admin profile' })
+  async getProfile(@Request() req) {
+    return this.adminService.getAdminProfile(req.user.userId);
+  }
+
+  @Put('profile')
+  @ApiOperation({ summary: 'Update admin profile' })
+  async updateProfile(@Request() req, @Body() dto: UpdateAdminProfileDto) {
+    return this.adminService.updateAdminProfile(req.user.userId, dto);
+  }
+
+  @Put('avatar')
+  @UseInterceptors(
+    FileInterceptor('avatar', {
+      storage: diskStorage({
+        destination: './uploads/avatars',
+        filename: (req, file, cb) => {
+          const randomName = Array(32)
+            .fill(null)
+            .map(() => Math.round(Math.random() * 16).toString(16))
+            .join('');
+          cb(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+      limits: {
+        fileSize: 5 * 1024 * 1024,
+      },
+    }),
+  )
+  @ApiOperation({ summary: 'Update admin avatar' })
+  async updateAvatar(@Request() req, @UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new Error('File is required');
+    }
+    const fileUrl = `/uploads/avatars/${file.filename}`;
+    return this.adminService.updateAdminAvatar(req.user.userId, fileUrl);
   }
 }

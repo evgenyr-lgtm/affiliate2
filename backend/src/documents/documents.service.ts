@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { DocumentType } from '@prisma/client';
+import { UpdateDocumentDto } from './dto/update-document.dto';
 
 @Injectable()
 export class DocumentsService {
@@ -9,14 +10,23 @@ export class DocumentsService {
 
   async create(dto: CreateDocumentDto) {
     return this.prisma.document.create({
-      data: dto,
+      data: {
+        name: dto.name,
+        type: dto.type ?? DocumentType.other,
+        fileUrl: dto.fileUrl,
+      },
     });
   }
 
-  async findAll(type?: DocumentType) {
-    const where: any = {};
+  async findAll(type?: DocumentType, includeHidden = false) {
+    const where: any = {
+      deletedAt: null,
+    };
     if (type) {
       where.type = type;
+    }
+    if (!includeHidden) {
+      where.isHidden = false;
     }
 
     return this.prisma.document.findMany({
@@ -31,10 +41,20 @@ export class DocumentsService {
     });
   }
 
-  async delete(id: string) {
+  async update(id: string, dto: UpdateDocumentDto) {
+    const data: any = { ...dto };
+    if (dto.uploadedAt) {
+      data.uploadedAt = new Date(dto.uploadedAt);
+    }
     return this.prisma.document.update({
       where: { id },
-      data: { deletedAt: new Date() },
+      data,
+    });
+  }
+
+  async delete(id: string) {
+    return this.prisma.document.delete({
+      where: { id },
     });
   }
 }

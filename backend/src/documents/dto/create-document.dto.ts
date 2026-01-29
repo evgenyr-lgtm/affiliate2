@@ -1,4 +1,4 @@
-import { IsString, IsEnum } from 'class-validator';
+import { IsString, IsEnum, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { DocumentType } from '@prisma/client';
 
@@ -7,9 +7,10 @@ export class CreateDocumentDto {
   @IsString()
   name: string;
 
-  @ApiProperty({ enum: DocumentType })
+  @ApiProperty({ enum: DocumentType, required: false })
+  @IsOptional()
   @IsEnum(DocumentType)
-  type: DocumentType;
+  type?: DocumentType;
 
   @ApiProperty()
   @IsString()

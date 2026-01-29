@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Put, Body, Param, Query, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { DocumentsService } from './documents.service';
 import { CreateDocumentDto } from './dto/create-document.dto';
+import { UpdateDocumentDto } from './dto/update-document.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -19,6 +20,15 @@ export class DocumentsController {
   @ApiOperation({ summary: 'Get all documents (public for affiliates)' })
   async findAll(@Query('type') type?: DocumentType) {
     return this.documentsService.findAll(type);
+  }
+
+  @Get('admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.MARKETING_ADMIN, UserRole.SALES_ADMIN, UserRole.SYSTEM_ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get all documents (admin)' })
+  async findAllAdmin(@Query('type') type?: DocumentType) {
+    return this.documentsService.findAll(type, true);
   }
 
   @Get(':id')
@@ -44,7 +54,23 @@ export class DocumentsController {
         },
       }),
       limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB
+        fileSize: 20 * 1024 * 1024, // 20MB
+      },
+      fileFilter: (req, file, cb) => {
+        const allowed = [
+          'application/pdf',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'application/vnd.ms-excel',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'image/png',
+          'image/jpeg',
+        ];
+        if (allowed.includes(file.mimetype)) {
+          cb(null, true);
+        } else {
+          cb(new Error('Unsupported file type'), false);
+        }
       },
     }),
   )
@@ -53,18 +79,31 @@ export class DocumentsController {
   async create(
     @UploadedFile() file: Express.Multer.File,
     @Body('name') name: string,
-    @Body('type') type: DocumentType,
+    @Body('type') type?: DocumentType,
   ) {
     if (!file) {
       throw new Error('File is required');
     }
     const fileUrl = `/uploads/documents/${file.filename}`;
-    return this.documentsService.create({ name, type, fileUrl });
+    return this.documentsService.create({
+      name: name || file.originalname,
+      type: type || DocumentType.other,
+      fileUrl,
+    });
+  }
+
+  @Put(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.MARKETING_ADMIN, UserRole.SALES_ADMIN, UserRole.SYSTEM_ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update document (admin only)' })
+  async update(@Param('id') id: string, @Body() dto: UpdateDocumentDto) {
+    return this.documentsService.update(id, dto);
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.MARKETING_ADMIN, UserRole.SYSTEM_ADMIN)
+  @Roles(UserRole.MARKETING_ADMIN, UserRole.SALES_ADMIN, UserRole.SYSTEM_ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete document (admin only)' })
   async delete(@Param('id') id: string) {

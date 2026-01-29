@@ -4,6 +4,7 @@ import { AffiliatesService } from '../affiliates/affiliates.service';
 import { CreateAffiliateDto } from './dto/create-affiliate.dto';
 import { UpdateCommissionDto } from './dto/update-commission.dto';
 import { UpdateAffiliateAdminDto } from './dto/update-affiliate-admin.dto';
+import { UpdateAdminProfileDto } from './dto/update-admin-profile.dto';
 import { AffiliateStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
@@ -63,6 +64,63 @@ export class AdminService {
 
   async updateAffiliateStatus(affiliateId: string, status: AffiliateStatus, userEmail: string) {
     return this.affiliatesService.updateStatus(affiliateId, status, userEmail);
+  }
+
+  async getAdminProfile(userId: string) {
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        avatar: true,
+        role: true,
+      },
+    });
+  }
+
+  async updateAdminProfile(userId: string, dto: UpdateAdminProfileDto) {
+    if (dto.email) {
+      const existing = await this.prisma.user.findUnique({
+        where: { email: dto.email },
+      });
+      if (existing && existing.id !== userId) {
+        throw new BadRequestException('Email already in use');
+      }
+    }
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        email: dto.email,
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        avatar: true,
+        role: true,
+      },
+    });
+  }
+
+  async updateAdminAvatar(userId: string, avatarUrl: string) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { avatar: avatarUrl },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        avatar: true,
+        role: true,
+      },
+    });
   }
 
   async updateCommission(affiliateId: string, dto: UpdateCommissionDto) {
