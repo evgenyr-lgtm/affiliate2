@@ -97,6 +97,13 @@ export default function DashboardPage() {
     email: false,
     phone: false,
     companyName: false,
+    notes: false,
+  })
+  const [draftVisibleColumns, setDraftVisibleColumns] = useState({
+    email: false,
+    phone: false,
+    companyName: false,
+    notes: false,
   })
   const [referralForm, setReferralForm] = useState({
     firstName: '',
@@ -467,10 +474,10 @@ export default function DashboardPage() {
           <section className="bg-white shadow rounded-lg p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-6">Manual Referral Entry Form</h2>
             <div className="flex items-center gap-3 text-sm text-gray-500 mb-6">
-              <span className={`font-semibold ${step === 1 ? 'text-gray-900' : ''}`}>Step 1</span>
+              <span className={`font-semibold ${step === 1 ? 'text-[#2b36ff]' : ''}`}>Step 1</span>
               <span>Choose who you want to refer</span>
               <span className="text-gray-300">|</span>
-              <span className={`font-semibold ${step === 2 ? 'text-gray-900' : ''}`}>Step 2</span>
+              <span className={`font-semibold ${step === 2 ? 'text-[#2b36ff]' : ''}`}>Step 2</span>
               <span>Enter your referral’s information</span>
             </div>
 
@@ -577,6 +584,7 @@ export default function DashboardPage() {
                             value={contractStart}
                             onChange={(event) => setContractStart(event.target.value)}
                             className="w-full rounded-full border border-gray-200 px-4 py-3 pr-10 text-sm text-gray-900"
+                            placeholder="Contract Start Date"
                           />
                           <svg
                             className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
@@ -592,6 +600,7 @@ export default function DashboardPage() {
                             value={contractEnd}
                             onChange={(event) => setContractEnd(event.target.value)}
                             className="w-full rounded-full border border-gray-200 px-4 py-3 pr-10 text-sm text-gray-900"
+                            placeholder="Contract End Date"
                           />
                           <svg
                             className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
@@ -760,7 +769,10 @@ export default function DashboardPage() {
                 <div className="relative" ref={filterMenuRef}>
                   <button
                     type="button"
-                    onClick={() => setShowFilters((prev) => !prev)}
+                    onClick={() => {
+                      setDraftVisibleColumns(visibleColumns)
+                      setShowFilters((prev) => !prev)
+                    }}
                     className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 shadow-sm hover:border-gray-300"
                   >
                     <span>Filters</span>
@@ -772,18 +784,19 @@ export default function DashboardPage() {
                     <div className="absolute right-0 mt-2 w-64 rounded-md border border-gray-200 bg-white p-4 shadow-lg">
                       <p className="text-sm font-medium text-gray-700 mb-2">Additional fields</p>
                       <div className="grid grid-cols-1 gap-2">
-                        {[
-                          { key: 'email', label: 'Referral email' },
-                          { key: 'phone', label: 'Phone number' },
-                          { key: 'companyName', label: 'Company name' },
-                        ].map((field) => (
+                      {[
+                        { key: 'email', label: 'Referral email' },
+                        { key: 'phone', label: 'Phone number' },
+                        { key: 'companyName', label: 'Company name' },
+                        { key: 'notes', label: 'Notes' },
+                      ].map((field) => (
                           <label key={field.key} className="flex items-center gap-2 text-sm text-gray-600">
                             <input
                               type="checkbox"
                               className="h-4 w-4 rounded border-gray-300"
-                              checked={(visibleColumns as any)[field.key]}
+                            checked={(draftVisibleColumns as any)[field.key]}
                               onChange={(event) =>
-                                setVisibleColumns((prev) => ({
+                              setDraftVisibleColumns((prev) => ({
                                   ...prev,
                                   [field.key]: event.target.checked,
                                 }))
@@ -793,6 +806,34 @@ export default function DashboardPage() {
                           </label>
                         ))}
                       </div>
+                    <div className="mt-3 flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        className="rounded-md border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:border-gray-300"
+                        onClick={() => {
+                          const cleared = {
+                            email: false,
+                            phone: false,
+                            companyName: false,
+                            notes: false,
+                          }
+                          setDraftVisibleColumns(cleared)
+                          setVisibleColumns(cleared)
+                        }}
+                      >
+                        Clear All
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-md bg-[#2b36ff] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#2330f0]"
+                        onClick={() => {
+                          setVisibleColumns(draftVisibleColumns)
+                          setShowFilters(false)
+                        }}
+                      >
+                        Save Changes
+                      </button>
+                    </div>
                     </div>
                   )}
                 </div>
@@ -846,6 +887,9 @@ export default function DashboardPage() {
                       {visibleColumns.companyName && (
                         <th className="px-4 py-3 text-left font-semibold">Company Name</th>
                       )}
+                      {visibleColumns.notes && (
+                        <th className="px-4 py-3 text-left font-semibold">Notes</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -867,6 +911,9 @@ export default function DashboardPage() {
                         )}
                         {visibleColumns.companyName && (
                           <td className="px-4 py-3">{referral.companyName || '-'}</td>
+                        )}
+                        {visibleColumns.notes && (
+                          <td className="px-4 py-3">{referral.internalNotes || '-'}</td>
                         )}
                       </tr>
                     ))}

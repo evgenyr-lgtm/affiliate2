@@ -19,6 +19,7 @@ type AffiliateRow = {
   companyName?: string
   accountType: 'individual' | 'company'
   phone?: string
+  internalNotes?: string
   status: 'pending' | 'active' | 'rejected'
   paymentTerm: 'weekly' | 'monthly' | 'quarterly' | 'yearly'
   rateType: 'percent' | 'fixed'
@@ -321,12 +322,25 @@ export default function AdminPage() {
     phone: false,
     accountType: false,
     companyName: false,
+    notes: false,
+  })
+  const [draftVisibleColumns, setDraftVisibleColumns] = useState({
+    email: false,
+    phone: false,
+    accountType: false,
+    companyName: false,
+    notes: false,
   })
   const [drafts, setDrafts] = useState<Record<string, any>>({})
   const [referralEditingId, setReferralEditingId] = useState<string | null>(null)
   const [showReferralFilters, setShowReferralFilters] = useState(false)
   const [referralExportMenuOpen, setReferralExportMenuOpen] = useState(false)
   const [visibleReferralColumns, setVisibleReferralColumns] = useState({
+    email: false,
+    phone: false,
+    notes: false,
+  })
+  const [draftVisibleReferralColumns, setDraftVisibleReferralColumns] = useState({
     email: false,
     phone: false,
     notes: false,
@@ -974,7 +988,10 @@ export default function AdminPage() {
                   <div className="relative" ref={affiliateFilterRef}>
                     <button
                       type="button"
-                      onClick={() => setShowFilters((prev) => !prev)}
+                      onClick={() => {
+                        setDraftVisibleColumns(visibleColumns)
+                        setShowFilters((prev) => !prev)
+                      }}
                       className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 shadow-sm hover:border-gray-300"
                     >
                       <span>Filters</span>
@@ -996,14 +1013,15 @@ export default function AdminPage() {
                             { key: 'phone', label: 'Phone number' },
                             { key: 'accountType', label: 'Registration type' },
                             { key: 'companyName', label: 'Company name' },
+                            { key: 'notes', label: 'Notes' },
                           ].map((field) => (
                             <label key={field.key} className="flex items-center gap-2 text-sm text-gray-600">
                               <input
                                 type="checkbox"
                                 className="h-4 w-4 rounded border-gray-300"
-                                checked={(visibleColumns as any)[field.key]}
+                                checked={(draftVisibleColumns as any)[field.key]}
                                 onChange={(event) =>
-                                  setVisibleColumns((prev) => ({
+                                  setDraftVisibleColumns((prev) => ({
                                     ...prev,
                                     [field.key]: event.target.checked,
                                   }))
@@ -1012,6 +1030,35 @@ export default function AdminPage() {
                               {field.label}
                             </label>
                           ))}
+                        </div>
+                        <div className="mt-3 flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            className="rounded-md border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:border-gray-300"
+                            onClick={() => {
+                              const cleared = {
+                                email: false,
+                                phone: false,
+                                accountType: false,
+                                companyName: false,
+                                notes: false,
+                              }
+                              setDraftVisibleColumns(cleared)
+                              setVisibleColumns(cleared)
+                            }}
+                          >
+                            Clear All
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded-md bg-[#2b36ff] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#2330f0]"
+                            onClick={() => {
+                              setVisibleColumns(draftVisibleColumns)
+                              setShowFilters(false)
+                            }}
+                          >
+                            Save Changes
+                          </button>
                         </div>
                       </div>
                     )}
@@ -1064,8 +1111,8 @@ export default function AdminPage() {
                 <div>Loading...</div>
               ) : (
                 <div className="bg-white shadow overflow-hidden sm:rounded-md">
-                  <div className="overflow-auto">
-                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-max divide-y divide-gray-200 text-sm whitespace-nowrap">
                       <thead className="bg-gray-50 text-gray-600">
                         <tr>
                           <th className="px-4 py-3 text-left font-semibold">#</th>
@@ -1087,6 +1134,9 @@ export default function AdminPage() {
                           )}
                           {visibleColumns.companyName && (
                             <th className="px-4 py-3 text-left font-semibold">Company Name</th>
+                          )}
+                          {visibleColumns.notes && (
+                            <th className="px-4 py-3 text-left font-semibold">Notes</th>
                           )}
                           <th className="px-4 py-3 text-left font-semibold">Actions</th>
                         </tr>
@@ -1202,6 +1252,9 @@ export default function AdminPage() {
                               {visibleColumns.companyName && (
                                 <td className="px-4 py-3">{affiliate.companyName || '–'}</td>
                               )}
+                              {visibleColumns.notes && (
+                                <td className="px-4 py-3">{affiliate.internalNotes || '-'}</td>
+                              )}
                               <td className="px-4 py-3">
                                 <div className="flex items-center gap-2">
                                   {!isEditing ? (
@@ -1239,7 +1292,7 @@ export default function AdminPage() {
                                     onClick={() => setResetAffiliateId(affiliate.id)}
                                   >
                                     <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                                      <path d="M10 2a4 4 0 0 0-4 4v2H5a1 1 0 0 0-1 1v7a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9a1 1 0 0 0-1-1h-1V6a4 4 0 0 0-4-4Zm2 6H8V6a2 2 0 1 1 4 0v2Z" />
+                                      <path d="M12 1a4 4 0 0 0-4 4v2H6a2 2 0 0 0-2 2v6a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V9a2 2 0 0 0-2-2h-1V5a2 2 0 1 0-4 0v2h2V5a1 1 0 1 1 2 0v2a1 1 0 0 0 1 1h2v2H6v5a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-1h-3v-2h4v3a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a1 1 0 0 1 1-1h4V5a3 3 0 0 1 3-3Z" />
                                     </svg>
                                   </button>
                                   <button
@@ -1294,7 +1347,10 @@ export default function AdminPage() {
                   <div className="relative" ref={referralFilterRef}>
                     <button
                       type="button"
-                      onClick={() => setShowReferralFilters((prev) => !prev)}
+                      onClick={() => {
+                        setDraftVisibleReferralColumns(visibleReferralColumns)
+                        setShowReferralFilters((prev) => !prev)
+                      }}
                       className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 shadow-sm hover:border-gray-300"
                     >
                       <span>Filters</span>
@@ -1320,9 +1376,9 @@ export default function AdminPage() {
                               <input
                                 type="checkbox"
                                 className="h-4 w-4 rounded border-gray-300"
-                                checked={(visibleReferralColumns as any)[field.key]}
+                                checked={(draftVisibleReferralColumns as any)[field.key]}
                                 onChange={(event) =>
-                                  setVisibleReferralColumns((prev) => ({
+                                  setDraftVisibleReferralColumns((prev) => ({
                                     ...prev,
                                     [field.key]: event.target.checked,
                                   }))
@@ -1331,6 +1387,29 @@ export default function AdminPage() {
                               {field.label}
                             </label>
                           ))}
+                        </div>
+                        <div className="mt-3 flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            className="rounded-md border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:border-gray-300"
+                            onClick={() => {
+                              const cleared = { email: false, phone: false, notes: false }
+                              setDraftVisibleReferralColumns(cleared)
+                              setVisibleReferralColumns(cleared)
+                            }}
+                          >
+                            Clear All
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded-md bg-[#2b36ff] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#2330f0]"
+                            onClick={() => {
+                              setVisibleReferralColumns(draftVisibleReferralColumns)
+                              setShowReferralFilters(false)
+                            }}
+                          >
+                            Save Changes
+                          </button>
                         </div>
                       </div>
                     )}
@@ -1382,8 +1461,8 @@ export default function AdminPage() {
                 <div>Loading...</div>
               ) : (
                 <div className="bg-white shadow overflow-hidden sm:rounded-md">
-                  <div className="overflow-auto">
-                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-max divide-y divide-gray-200 text-sm whitespace-nowrap">
                       <thead className="bg-gray-50 text-gray-600">
                         <tr>
                           <th className="px-4 py-3 text-left font-semibold">#</th>

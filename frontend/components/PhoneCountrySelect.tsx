@@ -75,7 +75,7 @@ export default function PhoneCountrySelect({
           <span className="font-medium">{country.dial}</span>
         </button>
         <svg
-          className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400"
+          className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400"
           viewBox="0 0 20 20"
           fill="currentColor"
         >
