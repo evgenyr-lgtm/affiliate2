@@ -176,7 +176,7 @@ const templateGroups = {
         'Last Name: {last_name}\n' +
         'Phone: {phone}\n' +
         'Email: {user_email}\n' +
-        'Company: {company}\n' +
+        'Company: {company_name}\n' +
         'Country: {country}\n\n' +
         'Kind regards,\n' +
         'Access Financial Team',
@@ -190,7 +190,7 @@ const templateGroups = {
         'Referral Name: {first_name} {last_name}\n' +
         'Email: {user_email}\n' +
         'Phone: {phone}\n' +
-        'Company: {company}\n' +
+        'Company: {company_name}\n' +
         'Country: {country}\n\n' +
         'Kind regards,\n' +
         'Access Financial Team',
@@ -218,7 +218,7 @@ const templateGroups = {
         'Access Financial Team',
     },
     {
-      name: 'New Referral',
+      name: 'New Referral Added',
       description: 'Sent to affiliates when they add a new referral.',
       subject: 'New referral submitted | {first_name}{last_name}',
       body:
@@ -251,17 +251,13 @@ const templateGroups = {
 }
 
 const availableTags = [
-  '{name}',
   '{first_name}',
   '{last_name}',
   '{account_type}',
   '{phone}',
   '{user_email}',
-  '{company}',
   '{company_name}',
   '{country}',
-  '{affiliate_id}',
-  '{referral_url}',
 ]
 
 const labelFrom = (value: string, options: { value: string; label: string }[]) =>
@@ -354,6 +350,13 @@ export default function AdminPage() {
   const documentShareRef = useRef<HTMLDivElement | null>(null)
   const baseUrl = getBackendBaseUrl()
 
+  const toggleTemplateExpanded = (id: string) => {
+    setTemplatesExpanded((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }))
+  }
+
   useEffect(() => {
     const token = Cookies.get('accessToken')
     if (!token) {
@@ -398,6 +401,48 @@ export default function AdminPage() {
     showReferralFilters,
     openShareDocumentId,
   ])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const saved = window.localStorage.getItem('admin-affiliate-filters')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        const next = {
+          email: false,
+          phone: false,
+          accountType: false,
+          companyName: false,
+          notes: false,
+          ...parsed,
+        }
+        setVisibleColumns(next)
+        setDraftVisibleColumns(next)
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const saved = window.localStorage.getItem('admin-referral-filters')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        const next = {
+          email: false,
+          phone: false,
+          notes: false,
+          ...parsed,
+        }
+        setVisibleReferralColumns(next)
+        setDraftVisibleReferralColumns(next)
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [])
 
   const { data: affiliates, isLoading: affiliatesLoading } = useQuery({
     queryKey: ['admin-affiliates'],
@@ -677,12 +722,14 @@ export default function AdminPage() {
   })
 
   const updateTemplateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+    mutationFn: async ({ id, data }: { id: string; data: any; silent?: boolean }) => {
       return api.put(`/email-templates/${id}`, data)
     },
-    onSuccess: () => {
+    onSuccess: (_response, variables) => {
       queryClient.invalidateQueries({ queryKey: ['email-templates'] })
-      toast.success('Template updated')
+      if (!variables?.silent) {
+        toast.success('Template updated')
+      }
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to update template')
@@ -690,17 +737,19 @@ export default function AdminPage() {
   })
 
   const createTemplateMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async ({ data }: { data: any; silent?: boolean }) => {
       return api.post('/email-templates', data)
     },
-    onSuccess: () => {
+    onSuccess: (_response, variables) => {
       queryClient.invalidateQueries({ queryKey: ['email-templates'] })
-      toast.success('Template created')
-      setShowNewTemplateModal(false)
-      setNewTemplateName('')
-      setNewTemplateDescription('')
-      setNewTemplateSubject('')
-      setNewTemplateBody('')
+      if (!variables?.silent) {
+        toast.success('Template created')
+        setShowNewTemplateModal(false)
+        setNewTemplateName('')
+        setNewTemplateDescription('')
+        setNewTemplateSubject('')
+        setNewTemplateBody('')
+      }
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to create template')
@@ -718,12 +767,15 @@ export default function AdminPage() {
     }
     missing.forEach((template) => {
       createTemplateMutation.mutate({
-        name: template.name,
-        description: template.description,
-        subject: template.subject,
-        body: template.body,
-        enabled: true,
-        variables: availableTags,
+        data: {
+          name: template.name,
+          description: template.description,
+          subject: template.subject,
+          body: template.body,
+          enabled: true,
+          variables: availableTags,
+        },
+        silent: true,
       })
     })
     setTemplatesSeeded(true)
@@ -878,6 +930,9 @@ export default function AdminPage() {
     const filename = format === 'csv' ? 'referrals.csv' : format === 'xlsx' ? 'referrals.xlsx' : 'referrals.pdf'
     exportRowsToFile(referralExportRows, format, filename)
   }
+
+  const hasReferralExtraColumns =
+    visibleReferralColumns.email || visibleReferralColumns.phone || visibleReferralColumns.notes
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -1045,6 +1100,9 @@ export default function AdminPage() {
                               }
                               setDraftVisibleColumns(cleared)
                               setVisibleColumns(cleared)
+                              if (typeof window !== 'undefined') {
+                                window.localStorage.setItem('admin-affiliate-filters', JSON.stringify(cleared))
+                              }
                             }}
                           >
                             Clear All
@@ -1055,6 +1113,12 @@ export default function AdminPage() {
                             onClick={() => {
                               setVisibleColumns(draftVisibleColumns)
                               setShowFilters(false)
+                              if (typeof window !== 'undefined') {
+                                window.localStorage.setItem(
+                                  'admin-affiliate-filters',
+                                  JSON.stringify(draftVisibleColumns)
+                                )
+                              }
                             }}
                           >
                             Save Changes
@@ -1112,7 +1176,11 @@ export default function AdminPage() {
               ) : (
                 <div className="bg-white shadow overflow-hidden sm:rounded-md">
                   <div className="overflow-x-auto">
-                    <table className="min-w-max divide-y divide-gray-200 text-sm whitespace-nowrap">
+                    <table
+                      className={`divide-y divide-gray-200 text-sm whitespace-nowrap ${
+                        hasReferralExtraColumns ? 'min-w-max' : 'min-w-full'
+                      }`}
+                    >
                       <thead className="bg-gray-50 text-gray-600">
                         <tr>
                           <th className="px-4 py-3 text-left font-semibold">#</th>
@@ -1219,7 +1287,7 @@ export default function AdminPage() {
                                       rateValue: Number(event.target.value || 0),
                                     })
                                   }
-                                  className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm disabled:bg-gray-50"
+                                  className="w-24 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm disabled:bg-gray-50"
                                 />
                               </td>
                               <td className="px-4 py-3">
@@ -1291,9 +1359,13 @@ export default function AdminPage() {
                                     className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 text-gray-600 hover:border-gray-300"
                                     onClick={() => setResetAffiliateId(affiliate.id)}
                                   >
-                                    <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                                      <path d="M12 1a4 4 0 0 0-4 4v2H6a2 2 0 0 0-2 2v6a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V9a2 2 0 0 0-2-2h-1V5a2 2 0 1 0-4 0v2h2V5a1 1 0 1 1 2 0v2a1 1 0 0 0 1 1h2v2H6v5a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-1h-3v-2h4v3a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a1 1 0 0 1 1-1h4V5a3 3 0 0 1 3-3Z" />
-                                    </svg>
+                                    <Image
+                                      src="/reset-password.png"
+                                      alt="Reset password"
+                                      width={16}
+                                      height={16}
+                                      className="h-4 w-4"
+                                    />
                                   </button>
                                   <button
                                     type="button"
@@ -1396,6 +1468,9 @@ export default function AdminPage() {
                               const cleared = { email: false, phone: false, notes: false }
                               setDraftVisibleReferralColumns(cleared)
                               setVisibleReferralColumns(cleared)
+                              if (typeof window !== 'undefined') {
+                                window.localStorage.setItem('admin-referral-filters', JSON.stringify(cleared))
+                              }
                             }}
                           >
                             Clear All
@@ -1406,6 +1481,12 @@ export default function AdminPage() {
                             onClick={() => {
                               setVisibleReferralColumns(draftVisibleReferralColumns)
                               setShowReferralFilters(false)
+                              if (typeof window !== 'undefined') {
+                                window.localStorage.setItem(
+                                  'admin-referral-filters',
+                                  JSON.stringify(draftVisibleReferralColumns)
+                                )
+                              }
                             }}
                           >
                             Save Changes
@@ -1662,7 +1743,7 @@ export default function AdminPage() {
                 {documentsLoading ? (
                   <div className="text-sm text-gray-500">Loading documents...</div>
                 ) : (
-                  <div className="overflow-auto">
+                  <div className="overflow-x-auto overflow-y-visible">
                     <table className="min-w-full divide-y divide-gray-200 text-sm">
                       <thead className="bg-gray-50 text-gray-600">
                         <tr>
@@ -1741,14 +1822,20 @@ export default function AdminPage() {
                                 <div className="flex flex-wrap items-center gap-2">
                                   {!isEditing ? (
                                     <button
-                                      className="rounded-md border border-gray-200 px-3 py-1 text-xs font-medium text-gray-700 hover:border-gray-300"
+                                      type="button"
+                                      title="Edit"
+                                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 text-gray-600 hover:border-gray-300"
                                       onClick={() => setDocumentEditingId(doc.id)}
                                     >
-                                      Edit
+                                      <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                                        <path d="M4 13.5V16h2.5l7.373-7.373-2.5-2.5L4 13.5Zm11.854-7.646a.5.5 0 0 0 0-.708l-1-1a.5.5 0 0 0-.708 0l-1.02 1.02 2.5 2.5 1.228-1.228Z" />
+                                      </svg>
                                     </button>
                                   ) : (
                                     <button
-                                      className="rounded-md bg-[#2b36ff] px-3 py-1 text-xs font-semibold text-white hover:bg-[#2330f0]"
+                                      type="button"
+                                      title="Save"
+                                      className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-[#2b36ff] text-white hover:bg-[#2330f0]"
                                       onClick={() =>
                                         updateDocumentMutation.mutate({
                                           id: doc.id,
@@ -1760,11 +1847,15 @@ export default function AdminPage() {
                                         })
                                       }
                                     >
-                                      Save
+                                      <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                                        <path d="M16.704 5.29 14.71 3.296A1 1 0 0 0 14.003 3H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-.296-.71ZM6 5h7v3H6V5Zm8 11H6v-5h8v5Z" />
+                                      </svg>
                                     </button>
                                   )}
                                   <button
-                                    className="rounded-md border border-gray-200 px-3 py-1 text-xs font-medium text-gray-700 hover:border-gray-300"
+                                    type="button"
+                                    title={doc.isHidden ? 'Show' : 'Hide'}
+                                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 text-gray-600 hover:border-gray-300"
                                     onClick={() =>
                                       updateDocumentMutation.mutate({
                                         id: doc.id,
@@ -1772,27 +1863,47 @@ export default function AdminPage() {
                                       })
                                     }
                                   >
-                                    {doc.isHidden ? 'Show' : 'Hide'}
+                                    {doc.isHidden ? (
+                                      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.5">
+                                        <path d="M3 4.5 21 19.5" />
+                                        <path d="M10.58 10.58a2.5 2.5 0 0 0 3.54 3.54" />
+                                        <path d="M6.3 6.3C3.7 8.4 2.5 12 2.5 12s3.5 6.5 9.5 6.5c1.5 0 2.9-.3 4.1-.8" />
+                                        <path d="M14.12 5.7c-.7-.2-1.4-.2-2.1-.2 6 0 9.5 6.5 9.5 6.5a18 18 0 0 1-3 3.9" />
+                                      </svg>
+                                    ) : (
+                                      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.5">
+                                        <path d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12s-3.5 6.5-9.5 6.5S2.5 12 2.5 12Z" />
+                                        <circle cx="12" cy="12" r="3.5" />
+                                      </svg>
+                                    )}
                                   </button>
                                   <a
                                     href={fileLink}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="rounded-md border border-gray-200 px-3 py-1 text-xs font-medium text-gray-700 hover:border-gray-300"
+                                    title="Download"
+                                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 text-gray-600 hover:border-gray-300"
                                   >
-                                    Download
+                                    <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                                      <path d="M10 3a1 1 0 0 1 1 1v6.586l2.293-2.293a1 1 0 1 1 1.414 1.414l-4 4a1 1 0 0 1-1.414 0l-4-4A1 1 0 0 1 6.707 8.293L9 10.586V4a1 1 0 0 1 1-1Z" />
+                                      <path d="M4 14a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v2H4v-2Z" />
+                                    </svg>
                                   </a>
                                   <div className="relative" ref={documentShareRef}>
                                     <button
-                                      className="rounded-md border border-gray-200 px-3 py-1 text-xs font-medium text-gray-700 hover:border-gray-300"
+                                      type="button"
+                                      title="Share"
+                                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 text-gray-600 hover:border-gray-300"
                                       onClick={() =>
                                         setOpenShareDocumentId((prev) => (prev === doc.id ? null : doc.id))
                                       }
                                     >
-                                      Share
+                                      <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                                        <path d="M15 8a3 3 0 0 0-2.24 1.03L7.7 7.26a3 3 0 1 0 0 5.48l5.06-1.77A3 3 0 1 0 15 8Zm-8 4a1 1 0 1 1 0-2 1 1 0 0 1 0 2Zm8-2a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z" />
+                                      </svg>
                                     </button>
                                     {openShareDocumentId === doc.id && (
-                                      <div className="absolute right-0 z-10 mt-2 w-44 rounded-md border border-gray-200 bg-white shadow-lg">
+                                      <div className="absolute right-0 z-20 mt-2 w-44 rounded-md border border-gray-200 bg-white shadow-lg">
                                         {Object.entries(shareLinks).map(([label, link]) => (
                                           <a
                                             key={label}
@@ -1808,10 +1919,14 @@ export default function AdminPage() {
                                     )}
                                   </div>
                                   <button
-                                    className="rounded-md border border-red-200 px-3 py-1 text-xs font-medium text-red-600 hover:border-red-300"
+                                    type="button"
+                                    title="Delete"
+                                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-200 text-red-600 hover:border-red-300"
                                     onClick={() => deleteDocumentMutation.mutate(doc.id)}
                                   >
-                                    Delete
+                                    <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                                      <path d="M6 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v1h3v2H3V4h3V3Zm1 5h2v7H7V8Zm4 0h2v7h-2V8Z" />
+                                    </svg>
                                   </button>
                                 </div>
                               </td>
@@ -1902,7 +2017,13 @@ export default function AdminPage() {
                         const isOpen = Boolean(templatesExpanded[row.id])
                         const draft = templateDrafts[row.id] || {}
                         return (
-                          <div key={row.id} className="rounded-md border border-gray-200 p-4">
+                          <div
+                            key={row.id}
+                            className="rounded-md border border-gray-200 p-4"
+                            onClick={() => toggleTemplateExpanded(row.id)}
+                            role="button"
+                            tabIndex={0}
+                          >
                             <div className="flex items-center justify-between">
                               <div>
                                 <p className="text-sm font-semibold text-gray-900">{row.name}</p>
@@ -1911,16 +2032,17 @@ export default function AdminPage() {
                               <div className="flex items-center gap-3">
                                 <button
                                   className="text-sm text-gray-600"
-                                  onClick={() =>
-                                    setTemplatesExpanded((prev) => ({
-                                      ...prev,
-                                      [row.id]: !prev[row.id],
-                                    }))
-                                  }
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    toggleTemplateExpanded(row.id)
+                                  }}
                                 >
                                   Configure
                                 </button>
-                                <label className="inline-flex items-center gap-2 text-sm text-gray-600">
+                                <label
+                                  className="inline-flex items-center gap-2 text-sm text-gray-600"
+                                  onClick={(event) => event.stopPropagation()}
+                                >
                                   <input
                                     type="checkbox"
                                     checked={draft.enabled ?? row.enabled}
@@ -1930,6 +2052,7 @@ export default function AdminPage() {
                                       updateTemplateMutation.mutate({
                                         id: row.id,
                                         data: { enabled: nextEnabled },
+                                        silent: true,
                                       })
                                     }}
                                   />
@@ -1938,7 +2061,7 @@ export default function AdminPage() {
                               </div>
                             </div>
                             {isOpen && (
-                              <div className="mt-4 space-y-3">
+                              <div className="mt-4 space-y-3" onClick={(event) => event.stopPropagation()}>
                                 <input
                                   value={draft.subject ?? row.subject}
                                   onChange={(event) =>
@@ -1988,6 +2111,17 @@ export default function AdminPage() {
                                     }
                                   >
                                     Save Changes
+                                  </button>
+                                  <button
+                                    className="rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-700"
+                                    onClick={() =>
+                                      setTemplatesExpanded((prev) => ({
+                                        ...prev,
+                                        [row.id]: false,
+                                      }))
+                                    }
+                                  >
+                                    Close
                                   </button>
                                 </div>
                               </div>
@@ -2007,7 +2141,13 @@ export default function AdminPage() {
                         const isOpen = Boolean(templatesExpanded[row.id])
                         const draft = templateDrafts[row.id] || {}
                         return (
-                          <div key={row.id} className="rounded-md border border-gray-200 p-4">
+                          <div
+                            key={row.id}
+                            className="rounded-md border border-gray-200 p-4"
+                            onClick={() => toggleTemplateExpanded(row.id)}
+                            role="button"
+                            tabIndex={0}
+                          >
                             <div className="flex items-center justify-between">
                               <div>
                                 <p className="text-sm font-semibold text-gray-900">{row.name}</p>
@@ -2016,16 +2156,17 @@ export default function AdminPage() {
                               <div className="flex items-center gap-3">
                                 <button
                                   className="text-sm text-gray-600"
-                                  onClick={() =>
-                                    setTemplatesExpanded((prev) => ({
-                                      ...prev,
-                                      [row.id]: !prev[row.id],
-                                    }))
-                                  }
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    toggleTemplateExpanded(row.id)
+                                  }}
                                 >
                                   Configure
                                 </button>
-                                <label className="inline-flex items-center gap-2 text-sm text-gray-600">
+                                <label
+                                  className="inline-flex items-center gap-2 text-sm text-gray-600"
+                                  onClick={(event) => event.stopPropagation()}
+                                >
                                   <input
                                     type="checkbox"
                                     checked={draft.enabled ?? row.enabled}
@@ -2035,6 +2176,7 @@ export default function AdminPage() {
                                       updateTemplateMutation.mutate({
                                         id: row.id,
                                         data: { enabled: nextEnabled },
+                                        silent: true,
                                       })
                                     }}
                                   />
@@ -2043,7 +2185,7 @@ export default function AdminPage() {
                               </div>
                             </div>
                             {isOpen && (
-                              <div className="mt-4 space-y-3">
+                              <div className="mt-4 space-y-3" onClick={(event) => event.stopPropagation()}>
                                 <input
                                   value={draft.subject ?? row.subject}
                                   onChange={(event) =>
@@ -2093,6 +2235,17 @@ export default function AdminPage() {
                                     }
                                   >
                                     Save Changes
+                                  </button>
+                                  <button
+                                    className="rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-700"
+                                    onClick={() =>
+                                      setTemplatesExpanded((prev) => ({
+                                        ...prev,
+                                        [row.id]: false,
+                                      }))
+                                    }
+                                  >
+                                    Close
                                   </button>
                                 </div>
                               </div>
@@ -2115,14 +2268,21 @@ export default function AdminPage() {
                       When enabled, users will see a maintenance message.
                     </p>
                   </div>
-                  <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-                    <input
-                      type="checkbox"
-                      checked={maintenanceEnabled}
-                      onChange={(event) => setMaintenanceEnabled(event.target.checked)}
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={maintenanceEnabled}
+                    onClick={() => setMaintenanceEnabled((prev) => !prev)}
+                    className={`relative inline-flex h-8 w-14 items-center rounded-full transition ${
+                      maintenanceEnabled ? 'bg-[#2b36ff]' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition ${
+                        maintenanceEnabled ? 'translate-x-7' : 'translate-x-1'
+                      }`}
                     />
-                    {maintenanceEnabled ? 'On' : 'Off'}
-                  </label>
+                  </button>
                 </div>
                 <button
                   className="rounded-md bg-[#2b36ff] px-4 py-2 text-sm font-semibold text-white"
@@ -2389,12 +2549,14 @@ export default function AdminPage() {
                     return
                   }
                   createTemplateMutation.mutate({
-                    name: newTemplateName,
-                    description: newTemplateDescription,
-                    subject: newTemplateSubject,
-                    body: newTemplateBody,
-                    enabled: true,
-                    variables: availableTags,
+                    data: {
+                      name: newTemplateName,
+                      description: newTemplateDescription,
+                      subject: newTemplateSubject,
+                      body: newTemplateBody,
+                      enabled: true,
+                      variables: availableTags,
+                    },
                   })
                 }}
               >

@@ -49,6 +49,7 @@ export default function AdminAccountSettingsPage() {
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [repeatPassword, setRepeatPassword] = useState('')
+  const [showNewPassword, setShowNewPassword] = useState(false)
 
   useEffect(() => {
     const token = Cookies.get('accessToken')
@@ -147,16 +148,31 @@ export default function AdminAccountSettingsPage() {
                 className="h-8 w-auto"
               />
             </button>
-            <button
-              onClick={() => {
-                Cookies.remove('accessToken')
-                Cookies.remove('refreshToken')
-                router.push('/login')
-              }}
-              className="text-sm text-gray-600 hover:text-gray-900"
-            >
-              Logout
-            </button>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                {adminProfile?.avatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={`${baseUrl}${adminProfile.avatar}`}
+                    alt="Profile"
+                    className="h-8 w-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500" />
+                )}
+                <span>Welcome, Admin!</span>
+              </div>
+              <button
+                onClick={() => {
+                  Cookies.remove('accessToken')
+                  Cookies.remove('refreshToken')
+                  router.push('/login')
+                }}
+                className="text-sm text-gray-600 hover:text-gray-900"
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </nav>
@@ -170,6 +186,13 @@ export default function AdminAccountSettingsPage() {
               onClick={() => router.push('/admin')}
               className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:border-gray-300"
             >
+              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fillRule="evenodd"
+                  d="M12.78 4.22a.75.75 0 0 1 0 1.06L8.06 10l4.72 4.72a.75.75 0 0 1-1.06 1.06l-5.25-5.25a.75.75 0 0 1 0-1.06l5.25-5.25a.75.75 0 0 1 1.06 0Z"
+                  clipRule="evenodd"
+                />
+              </svg>
               Back to Admin
             </button>
           </div>
@@ -244,13 +267,25 @@ export default function AdminAccountSettingsPage() {
               placeholder="Current Password"
             />
             <div className="flex items-center gap-2">
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(event) => setNewPassword(event.target.value)}
-                className="flex-1 rounded-md border border-gray-200 px-4 py-3 text-sm text-gray-900"
-                placeholder="New Password"
-              />
+              <div className="relative flex-1">
+                <input
+                  type={showNewPassword ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                  className="w-full rounded-md border border-gray-200 px-4 py-3 pr-10 text-sm text-gray-900"
+                  placeholder="New Password"
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  onClick={() => setShowNewPassword((prev) => !prev)}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12s-3.5 6.5-9.5 6.5S2.5 12 2.5 12Z" />
+                    <circle cx="12" cy="12" r="3.5" />
+                  </svg>
+                </button>
+              </div>
               <button
                 type="button"
                 className="rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-700"

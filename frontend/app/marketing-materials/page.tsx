@@ -178,8 +178,8 @@ export default function MarketingMaterialsPage() {
           {isLoading ? (
             <div>Loading...</div>
           ) : (
-            <div className="bg-white shadow overflow-hidden sm:rounded-md">
-              <div className="overflow-auto">
+            <div className="bg-white shadow sm:rounded-md">
+              <div className="overflow-x-auto overflow-y-visible">
                 <table className="min-w-full divide-y divide-gray-200 text-sm">
                   <thead className="bg-gray-50 text-gray-600">
                     <tr>
@@ -196,7 +196,16 @@ export default function MarketingMaterialsPage() {
                       const shareLinks = buildShareLinks(fileLink)
                       return (
                         <tr key={doc.id} className="text-gray-700">
-                          <td className="px-4 py-3">{doc.name}</td>
+                          <td className="px-4 py-3">
+                            <a
+                              href={fileLink}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-gray-700 hover:text-gray-900 hover:underline"
+                            >
+                              {doc.name}
+                            </a>
+                          </td>
                           <td className="px-4 py-3">{formatDate(doc.uploadedAt)}</td>
                           <td className="px-4 py-3">{documentTypeLabel(doc.type)}</td>
                           <td className="px-4 py-3">
@@ -220,7 +229,7 @@ export default function MarketingMaterialsPage() {
                                 Share
                               </button>
                               {openShareId === doc.id && (
-                                <div className="absolute right-0 z-10 mt-2 w-44 rounded-md border border-gray-200 bg-white shadow-lg">
+                                <div className="absolute right-0 z-20 mt-2 w-44 rounded-md border border-gray-200 bg-white shadow-lg">
                                   {Object.entries(shareLinks).map(([label, link]) => (
                                     <a
                                       key={label}

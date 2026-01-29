@@ -97,13 +97,11 @@ export default function DashboardPage() {
     email: false,
     phone: false,
     companyName: false,
-    notes: false,
   })
   const [draftVisibleColumns, setDraftVisibleColumns] = useState({
     email: false,
     phone: false,
     companyName: false,
-    notes: false,
   })
   const [referralForm, setReferralForm] = useState({
     firstName: '',
@@ -164,6 +162,26 @@ export default function DashboardPage() {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [menuOpen, exportMenuOpen, showFilters])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const saved = window.localStorage.getItem('affiliate-referral-filters')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        const next = {
+          email: false,
+          phone: false,
+          companyName: false,
+          ...parsed,
+        }
+        setVisibleColumns(next)
+        setDraftVisibleColumns(next)
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [])
 
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard'],
@@ -584,8 +602,12 @@ export default function DashboardPage() {
                             value={contractStart}
                             onChange={(event) => setContractStart(event.target.value)}
                             className="w-full rounded-full border border-gray-200 px-4 py-3 pr-10 text-sm text-gray-900"
-                            placeholder="Contract Start Date"
                           />
+                          {!contractStart && (
+                            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">
+                              Contract Start Date
+                            </span>
+                          )}
                           <svg
                             className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
                             viewBox="0 0 20 20"
@@ -600,8 +622,12 @@ export default function DashboardPage() {
                             value={contractEnd}
                             onChange={(event) => setContractEnd(event.target.value)}
                             className="w-full rounded-full border border-gray-200 px-4 py-3 pr-10 text-sm text-gray-900"
-                            placeholder="Contract End Date"
                           />
+                          {!contractEnd && (
+                            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">
+                              Contract End Date
+                            </span>
+                          )}
                           <svg
                             className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
                             viewBox="0 0 20 20"
@@ -627,19 +653,32 @@ export default function DashboardPage() {
                         className="rounded-full border border-gray-200 px-4 py-3 text-sm text-gray-900"
                         placeholder="Nationality (if known)"
                       />
-                      <select
-                        value={referralForm.maritalStatus}
-                        onChange={(event) =>
-                          setReferralForm((prev) => ({ ...prev, maritalStatus: event.target.value }))
-                        }
-                        className="rounded-full border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900"
-                      >
-                        <option value="">Marital status</option>
-                        <option value="Single">Single</option>
-                        <option value="Married">Married</option>
-                        <option value="Divorced">Divorced</option>
-                        <option value="Widowed">Widowed</option>
-                      </select>
+                      <div className="relative">
+                        <select
+                          value={referralForm.maritalStatus}
+                          onChange={(event) =>
+                            setReferralForm((prev) => ({ ...prev, maritalStatus: event.target.value }))
+                          }
+                          className="w-full appearance-none rounded-full border border-gray-200 bg-white px-4 py-3 pr-10 text-sm text-gray-900"
+                        >
+                          <option value="">Marital status</option>
+                          <option value="Single">Single</option>
+                          <option value="Married">Married</option>
+                          <option value="Divorced">Divorced</option>
+                          <option value="Widowed">Widowed</option>
+                        </select>
+                        <svg
+                          className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.24 4.5a.75.75 0 0 1-1.08 0l-4.24-4.5a.75.75 0 0 1 .02-1.06Z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </div>
                     </div>
                     <textarea
                       value={referralForm.notes}
@@ -788,7 +827,6 @@ export default function DashboardPage() {
                         { key: 'email', label: 'Referral email' },
                         { key: 'phone', label: 'Phone number' },
                         { key: 'companyName', label: 'Company name' },
-                        { key: 'notes', label: 'Notes' },
                       ].map((field) => (
                           <label key={field.key} className="flex items-center gap-2 text-sm text-gray-600">
                             <input
@@ -815,10 +853,12 @@ export default function DashboardPage() {
                             email: false,
                             phone: false,
                             companyName: false,
-                            notes: false,
                           }
                           setDraftVisibleColumns(cleared)
                           setVisibleColumns(cleared)
+                          if (typeof window !== 'undefined') {
+                            window.localStorage.setItem('affiliate-referral-filters', JSON.stringify(cleared))
+                          }
                         }}
                       >
                         Clear All
@@ -829,6 +869,12 @@ export default function DashboardPage() {
                         onClick={() => {
                           setVisibleColumns(draftVisibleColumns)
                           setShowFilters(false)
+                          if (typeof window !== 'undefined') {
+                            window.localStorage.setItem(
+                              'affiliate-referral-filters',
+                              JSON.stringify(draftVisibleColumns)
+                            )
+                          }
                         }}
                       >
                         Save Changes
@@ -887,9 +933,6 @@ export default function DashboardPage() {
                       {visibleColumns.companyName && (
                         <th className="px-4 py-3 text-left font-semibold">Company Name</th>
                       )}
-                      {visibleColumns.notes && (
-                        <th className="px-4 py-3 text-left font-semibold">Notes</th>
-                      )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -911,9 +954,6 @@ export default function DashboardPage() {
                         )}
                         {visibleColumns.companyName && (
                           <td className="px-4 py-3">{referral.companyName || '-'}</td>
-                        )}
-                        {visibleColumns.notes && (
-                          <td className="px-4 py-3">{referral.internalNotes || '-'}</td>
                         )}
                       </tr>
                     ))}
