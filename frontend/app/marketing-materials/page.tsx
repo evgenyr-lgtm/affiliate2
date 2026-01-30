@@ -231,12 +231,17 @@ export default function MarketingMaterialsPage() {
                                 onClick={() =>
                                   setOpenShareId((prev) => (prev === doc.id ? null : doc.id))
                                 }
-                                className="text-primary-600 hover:text-primary-500"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 text-gray-600 hover:border-gray-300"
+                                title="Share"
                               >
-                                Share
+                                <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.5">
+                                  <path d="M14 3h7v7" />
+                                  <path d="M10 14 21 3" />
+                                  <path d="M5 7v12a2 2 0 0 0 2 2h12" />
+                                </svg>
                               </button>
                               {openShareId === doc.id && (
-                                <div className="absolute right-0 z-20 mt-2 w-44 rounded-md border border-gray-200 bg-white shadow-lg">
+                                <div className="absolute right-0 z-50 mt-2 w-44 rounded-md border border-gray-200 bg-white shadow-lg">
                                   {Object.entries(shareLinks).map(([label, link]) => (
                                     <a
                                       key={label}

@@ -11,6 +11,14 @@ import { UserRole, AffiliateStatus } from '@prisma/client';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { Storage } from '@google-cloud/storage';
+
+const getBucketName = () => {
+  if (process.env.GCS_BUCKET) return process.env.GCS_BUCKET;
+  if (process.env.FIREBASE_STORAGE_BUCKET) return process.env.FIREBASE_STORAGE_BUCKET;
+  if (process.env.GOOGLE_CLOUD_PROJECT) return `${process.env.GOOGLE_CLOUD_PROJECT}.appspot.com`;
+  return undefined;
+};
 
 @ApiTags('Admin')
 @Controller('admin')
@@ -110,7 +118,17 @@ export class AdminController {
     if (!file) {
       throw new Error('File is required');
     }
-    const fileUrl = `/uploads/avatars/${file.filename}`;
+    const bucket = getBucketName();
+    if (bucket) {
+      try {
+        const storage = new Storage();
+        const objectName = `avatars/${file.filename}`;
+        await storage.bucket(bucket).upload(file.path, { destination: objectName });
+      } catch {
+        // Fall back to local storage if GCS upload fails.
+      }
+    }
+    const fileUrl = `/api/avatars/${file.filename}`;
     return this.adminService.updateAdminAvatar(req.user.userId, fileUrl);
   }
 }

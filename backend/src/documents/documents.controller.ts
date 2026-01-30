@@ -68,6 +68,10 @@ export class DocumentsController {
       return res.status(404).json({ message: 'Document not found' });
     }
 
+    if (doc.fileUrl.startsWith('http://') || doc.fileUrl.startsWith('https://')) {
+      return res.redirect(doc.fileUrl);
+    }
+
     const gcsInfo = parseGcsUrl(doc.fileUrl);
     if (gcsInfo) {
       const storage = new Storage();
@@ -83,6 +87,21 @@ export class DocumentsController {
     const relativePath = doc.fileUrl.replace('/uploads/', '');
     const filePath = join(process.cwd(), 'uploads', relativePath);
     if (!existsSync(filePath)) {
+      const bucket = getBucketName();
+      if (bucket) {
+        const storage = new Storage();
+        const objectName = relativePath.startsWith('documents/') ? relativePath : `documents/${relativePath}`;
+        const file = storage.bucket(bucket).file(objectName);
+        const [exists] = await file.exists();
+        if (exists) {
+          const stream = file.createReadStream();
+          stream.on('error', () => {
+            res.status(404).json({ message: 'File not found' });
+          });
+          stream.pipe(res);
+          return;
+        }
+      }
       return res.status(404).json({ message: 'File not found' });
     }
     return createReadStream(filePath).pipe(res);

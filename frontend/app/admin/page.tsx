@@ -773,6 +773,19 @@ export default function AdminPage() {
     },
   })
 
+  const deleteTemplateMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return api.delete(`/email-templates/${id}`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['email-templates'] })
+      toast.success('Template deleted')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete template')
+    },
+  })
+
   useEffect(() => {
     if (!templates || templatesSeeded) return
     const existingNames = new Set((templates as EmailTemplateRow[]).map((t) => t.name))
@@ -2002,12 +2015,14 @@ export default function AdminPage() {
                                         setOpenShareDocumentId((prev) => (prev === doc.id ? null : doc.id))
                                       }
                                     >
-                                      <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                                        <path d="M15 8a3 3 0 0 0-2.24 1.03L7.7 7.26a3 3 0 1 0 0 5.48l5.06-1.77A3 3 0 1 0 15 8Zm-8 4a1 1 0 1 1 0-2 1 1 0 0 1 0 2Zm8-2a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z" />
+                                      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.5">
+                                        <path d="M14 3h7v7" />
+                                        <path d="M10 14 21 3" />
+                                        <path d="M5 7v12a2 2 0 0 0 2 2h12" />
                                       </svg>
                                     </button>
                                     {openShareDocumentId === doc.id && (
-                                      <div className="absolute right-0 z-20 mt-2 w-44 rounded-md border border-gray-200 bg-white shadow-lg">
+                                      <div className="absolute right-0 z-50 mt-2 w-44 rounded-md border border-gray-200 bg-white shadow-lg">
                                         {Object.entries(shareLinks).map(([label, link]) => (
                                           <a
                                             key={label}
@@ -2133,6 +2148,17 @@ export default function AdminPage() {
                               </div>
                               <div className="flex items-center gap-3">
                                 <button
+                                  className="text-sm text-red-600"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    if (window.confirm('Delete this template?')) {
+                                      deleteTemplateMutation.mutate(row.id)
+                                    }
+                                  }}
+                                >
+                                  Delete
+                                </button>
+                                <button
                                   className="text-sm text-gray-600"
                                   onClick={(event) => {
                                     event.stopPropagation()
@@ -2254,6 +2280,17 @@ export default function AdminPage() {
                                 <p className="text-xs text-gray-500">{row.description || template.description}</p>
                               </div>
                               <div className="flex items-center gap-3">
+                                <button
+                                  className="text-sm text-red-600"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    if (window.confirm('Delete this template?')) {
+                                      deleteTemplateMutation.mutate(row.id)
+                                    }
+                                  }}
+                                >
+                                  Delete
+                                </button>
                                 <button
                                   className="text-sm text-gray-600"
                                   onClick={(event) => {

@@ -9,6 +9,14 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { Storage } from '@google-cloud/storage';
+
+const getBucketName = () => {
+  if (process.env.GCS_BUCKET) return process.env.GCS_BUCKET;
+  if (process.env.FIREBASE_STORAGE_BUCKET) return process.env.FIREBASE_STORAGE_BUCKET;
+  if (process.env.GOOGLE_CLOUD_PROJECT) return `${process.env.GOOGLE_CLOUD_PROJECT}.appspot.com`;
+  return undefined;
+};
 
 @ApiTags('Affiliates')
 @Controller('affiliate')
@@ -66,7 +74,17 @@ export class AffiliatesController {
     if (!file) {
       throw new Error('Avatar file is required');
     }
-    const avatarUrl = `/uploads/avatars/${file.filename}`;
+    const bucket = getBucketName();
+    if (bucket) {
+      try {
+        const storage = new Storage();
+        const objectName = `avatars/${file.filename}`;
+        await storage.bucket(bucket).upload(file.path, { destination: objectName });
+      } catch {
+        // Fall back to local storage if GCS upload fails.
+      }
+    }
+    const avatarUrl = `/api/avatars/${file.filename}`;
     return this.affiliatesService.updateProfile(req.user.userId, { avatar: avatarUrl });
   }
 
