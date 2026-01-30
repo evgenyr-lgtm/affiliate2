@@ -186,7 +186,7 @@ export default function MarketingMaterialsPage() {
             <div>Loading...</div>
           ) : (
             <div className="bg-white shadow sm:rounded-md">
-              <div className="overflow-x-auto overflow-y-visible">
+            <div className="relative overflow-x-auto overflow-y-visible pb-24">
                 <table className="min-w-full divide-y divide-gray-200 text-sm">
                   <thead className="bg-gray-50 text-gray-600">
                     <tr>

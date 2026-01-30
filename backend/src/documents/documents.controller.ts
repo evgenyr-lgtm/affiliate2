@@ -160,7 +160,11 @@ export class DocumentsController {
       try {
         const storage = new Storage();
         const [exists] = await storage.bucket(bucket).exists();
-        if (exists) {
+        if (!exists) {
+          if (process.env.NODE_ENV === 'production') {
+            throw new Error('Storage bucket not found');
+          }
+        } else {
           const objectName = `documents/${file.filename}`;
           await storage.bucket(bucket).upload(file.path, { destination: objectName });
           return this.documentsService.create({
@@ -170,8 +174,14 @@ export class DocumentsController {
           });
         }
       } catch {
-        // Fall back to local storage when bucket upload fails.
+        if (process.env.NODE_ENV === 'production') {
+          throw new Error('Failed to upload document');
+        }
       }
+    }
+
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('Storage bucket is required in production');
     }
 
     return this.documentsService.create({

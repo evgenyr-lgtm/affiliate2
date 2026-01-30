@@ -358,6 +358,14 @@ export default function AdminPage() {
   const referralExportRef = useRef<HTMLDivElement | null>(null)
   const documentShareRef = useRef<HTMLDivElement | null>(null)
   const baseUrl = getBackendBaseUrl()
+  const { data: adminProfile } = useQuery({
+    queryKey: ['admin-profile'],
+    queryFn: async () => {
+      const response = await api.get('/admin/profile')
+      return response.data
+    },
+    refetchOnMount: 'always',
+  })
 
   const toggleTemplateExpanded = (id: string) => {
     setTemplatesExpanded((prev) => ({
@@ -1062,7 +1070,16 @@ export default function AdminPage() {
                   onClick={() => setAdminMenuOpen((prev) => !prev)}
                   className="flex items-center gap-2 text-sm font-semibold text-gray-700"
                 >
-                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500" />
+                  {adminProfile?.avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`${baseUrl}${adminProfile.avatar}`}
+                      alt="Profile"
+                      className="h-8 w-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500" />
+                  )}
                   <span>Welcome, Admin!</span>
                   <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                     <path
@@ -1860,7 +1877,7 @@ export default function AdminPage() {
                 {documentsLoading ? (
                   <div className="text-sm text-gray-500">Loading documents...</div>
                 ) : (
-                  <div className="overflow-x-auto overflow-y-visible">
+                  <div className="relative overflow-x-auto overflow-y-visible pb-24">
                     <table className="min-w-full divide-y divide-gray-200 text-sm">
                       <thead className="bg-gray-50 text-gray-600">
                         <tr>
