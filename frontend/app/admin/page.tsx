@@ -677,7 +677,7 @@ export default function AdminPage() {
     if (doc.fileUrl.startsWith('http://') || doc.fileUrl.startsWith('https://')) {
       return doc.fileUrl
     }
-    return `${baseUrl}/documents/${doc.id}/download`
+    return `${baseUrl}/api/documents/${doc.id}/download`
   }
 
   const updateDocumentMutation = useMutation({

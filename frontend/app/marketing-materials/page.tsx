@@ -90,7 +90,7 @@ export default function MarketingMaterialsPage() {
     if (doc.fileUrl.startsWith('http://') || doc.fileUrl.startsWith('https://')) {
       return doc.fileUrl
     }
-    return `${baseUrl}/documents/${doc.id}/download`
+    return `${baseUrl}/api/documents/${doc.id}/download`
   }
 
   return (

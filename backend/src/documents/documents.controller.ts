@@ -138,14 +138,21 @@ export class DocumentsController {
     const localUrl = `/uploads/documents/${file.filename}`;
     const bucket = getBucketName();
     if (bucket) {
-      const storage = new Storage();
-      const objectName = `documents/${file.filename}`;
-      await storage.bucket(bucket).upload(file.path, { destination: objectName });
-      return this.documentsService.create({
-        name: name || file.originalname,
-        type: type || DocumentType.other,
-        fileUrl: `gcs://${bucket}/${objectName}`,
-      });
+      try {
+        const storage = new Storage();
+        const [exists] = await storage.bucket(bucket).exists();
+        if (exists) {
+          const objectName = `documents/${file.filename}`;
+          await storage.bucket(bucket).upload(file.path, { destination: objectName });
+          return this.documentsService.create({
+            name: name || file.originalname,
+            type: type || DocumentType.other,
+            fileUrl: `gcs://${bucket}/${objectName}`,
+          });
+        }
+      } catch {
+        // Fall back to local storage when bucket upload fails.
+      }
     }
 
     return this.documentsService.create({
