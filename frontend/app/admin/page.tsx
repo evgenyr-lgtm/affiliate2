@@ -857,7 +857,10 @@ export default function AdminPage() {
     const rowsByName = new Map(templateRows.map((row) => [row.name, row]))
     const ordered = defaults
       .map((template) => ({ template, row: rowsByName.get(template.name) }))
-      .filter((item) => item.row)
+      .filter(
+        (item): item is { template: (typeof defaults)[number]; row: EmailTemplateRow } =>
+          Boolean(item.row)
+      )
     const customRows = templateRows.filter(
       (row) =>
         !defaultNames.has(row.name) &&
@@ -885,7 +888,10 @@ export default function AdminPage() {
     const rowsByName = new Map(templateRows.map((row) => [row.name, row]))
     const ordered = defaults
       .map((template) => ({ template, row: rowsByName.get(template.name) }))
-      .filter((item) => item.row)
+      .filter(
+        (item): item is { template: (typeof defaults)[number]; row: EmailTemplateRow } =>
+          Boolean(item.row)
+      )
     const customRows = templateRows.filter(
       (row) =>
         !defaultNames.has(row.name) &&
