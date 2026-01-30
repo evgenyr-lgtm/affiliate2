@@ -33,4 +33,10 @@ export class EmailTemplatesService {
       data: dto,
     });
   }
+
+  async delete(id: string) {
+    return this.prisma.emailTemplate.delete({
+      where: { id },
+    });
+  }
 }

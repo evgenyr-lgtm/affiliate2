@@ -116,7 +116,8 @@ export default function AdminAccountSettingsPage() {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
     },
-    onSuccess: () => {
+    onSuccess: (response) => {
+      queryClient.setQueryData(['admin-profile'], response.data)
       queryClient.invalidateQueries({ queryKey: ['admin-profile'] })
       toast.success('Avatar updated')
     },

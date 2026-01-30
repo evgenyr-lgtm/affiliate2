@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { EmailTemplatesService } from './email-templates.service';
 import { CreateEmailTemplateDto } from './dto/create-email-template.dto';
@@ -32,5 +32,11 @@ export class EmailTemplatesController {
   @ApiOperation({ summary: 'Update email template' })
   async update(@Param('id') id: string, @Body() dto: UpdateEmailTemplateDto) {
     return this.emailTemplatesService.update(id, dto);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete email template' })
+  async delete(@Param('id') id: string) {
+    return this.emailTemplatesService.delete(id);
   }
 }

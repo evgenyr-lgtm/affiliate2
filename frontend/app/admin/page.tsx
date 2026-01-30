@@ -1877,7 +1877,7 @@ export default function AdminPage() {
                 {documentsLoading ? (
                   <div className="text-sm text-gray-500">Loading documents...</div>
                 ) : (
-                  <div className="relative overflow-x-auto overflow-y-visible pb-24">
+                  <div className="relative min-h-[420px] overflow-x-auto overflow-y-visible pb-40">
                     <table className="min-w-full divide-y divide-gray-200 text-sm">
                       <thead className="bg-gray-50 text-gray-600">
                         <tr>
