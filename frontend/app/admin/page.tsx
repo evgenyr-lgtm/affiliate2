@@ -655,7 +655,7 @@ export default function AdminPage() {
       nextDrafts[referral.id] = {
         status: referral.status,
         paymentStatus: referral.paymentStatus,
-        internalNotes: referral.internalNotes || '',
+        notes: referral.notes || '',
       }
     })
     setReferralDrafts(nextDrafts)
