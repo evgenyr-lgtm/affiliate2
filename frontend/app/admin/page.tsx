@@ -78,8 +78,6 @@ type EmailTemplateRow = {
   variables?: string[]
 }
 
-type PasswordStrength = 'Easy' | 'Medium' | 'Strong'
-
 type ExportRow = Record<string, string | number>
 
 const statusOptions = [
