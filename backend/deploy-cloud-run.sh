@@ -19,7 +19,7 @@ JWT_SECRET="bd1cdc433c66e2cc93b51f39d1f49593959e6526e705d93d7bd1df1297912f28"
 JWT_REFRESH_SECRET="ceae86f2ca1718cb22029c92eb7c3dfa2277b27eef61c40d17b7e4461df29542"
 
 FRONTEND_URL="https://afl4--af-affiliate-portal.us-east4.hosted.app"
-GCS_BUCKET="af-affiliate-portal.appspot.com"
+GCS_BUCKET="af-affiliate-portal-uploads"
 
 if ! command -v gcloud >/dev/null 2>&1; then
   echo "gcloud is not installed. Install it first:"
