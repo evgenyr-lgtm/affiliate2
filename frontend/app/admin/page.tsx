@@ -162,20 +162,6 @@ const formatDateDisplay = (value?: string) => {
   return new Intl.DateTimeFormat('en-GB').format(date)
 }
 
-const getPasswordStrength = (password: string): PasswordStrength => {
-  const lengthScore = password.length >= 12 ? 2 : password.length >= 8 ? 1 : 0
-  const hasLower = /[a-z]/.test(password)
-  const hasUpper = /[A-Z]/.test(password)
-  const hasNumber = /\d/.test(password)
-  const hasSymbol = /[^A-Za-z0-9]/.test(password)
-  const variety = [hasLower, hasUpper, hasNumber, hasSymbol].filter(Boolean).length
-  const score = lengthScore + variety
-
-  if (password.length >= 12 && variety >= 4 && score >= 5) return 'Strong'
-  if (password.length >= 8 && variety >= 3) return 'Medium'
-  return 'Easy'
-}
-
 const generatePassword = () => {
   const chars =
     'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*()-_=+'
