@@ -19,6 +19,7 @@ type AffiliateRow = {
   firstName: string
   lastName: string
   companyName?: string
+  jobTitle?: string
   accountType: 'individual' | 'company'
   phone?: string
   internalNotes?: string
@@ -50,7 +51,8 @@ type ReferralRow = {
   contactPhone?: string
   status: 'pending' | 'approved' | 'rejected'
   paymentStatus: 'unpaid' | 'paid' | 'rejected'
-  internalNotes?: string
+  notes?: string
+  jobTitle?: string
   entryDate?: string
   affiliate?: {
     firstName?: string
@@ -348,6 +350,7 @@ export default function AdminPage() {
     phone: false,
     accountType: false,
     companyName: false,
+    jobTitle: false,
     notes: false,
   })
   const [draftVisibleColumns, setDraftVisibleColumns] = useState({
@@ -355,6 +358,7 @@ export default function AdminPage() {
     phone: false,
     accountType: false,
     companyName: false,
+    jobTitle: false,
     notes: false,
   })
   const [drafts, setDrafts] = useState<Record<string, any>>({})
@@ -366,6 +370,7 @@ export default function AdminPage() {
     phone: false,
     referralType: false,
     companyName: false,
+    jobTitle: false,
     notes: false,
   })
   const [draftVisibleReferralColumns, setDraftVisibleReferralColumns] = useState({
@@ -373,6 +378,7 @@ export default function AdminPage() {
     phone: false,
     referralType: false,
     companyName: false,
+    jobTitle: false,
     notes: false,
   })
   const [referralDrafts, setReferralDrafts] = useState<Record<string, any>>({})
@@ -403,6 +409,7 @@ export default function AdminPage() {
   const [newReferralAffiliateId, setNewReferralAffiliateId] = useState('')
   const [newReferralType, setNewReferralType] = useState<'individual' | 'company'>('individual')
   const [newReferralCompanyName, setNewReferralCompanyName] = useState('')
+  const [newReferralJobTitle, setNewReferralJobTitle] = useState('')
   const [newReferralFirstName, setNewReferralFirstName] = useState('')
   const [newReferralLastName, setNewReferralLastName] = useState('')
   const [newReferralEmail, setNewReferralEmail] = useState('')
@@ -495,6 +502,7 @@ export default function AdminPage() {
           phone: false,
           accountType: false,
           companyName: false,
+          jobTitle: false,
           notes: false,
           ...parsed,
         }
@@ -517,6 +525,7 @@ export default function AdminPage() {
           phone: false,
           referralType: false,
           companyName: false,
+          jobTitle: false,
           notes: false,
           ...parsed,
         }
@@ -776,6 +785,7 @@ export default function AdminPage() {
       setNewReferralAffiliateId('')
       setNewReferralType('individual')
       setNewReferralCompanyName('')
+      setNewReferralJobTitle('')
       setNewReferralFirstName('')
       setNewReferralLastName('')
       setNewReferralEmail('')
@@ -1100,9 +1110,12 @@ export default function AdminPage() {
       Status: labelFrom(referral.status, referralStatusOptions),
       Affiliate: `${referral.affiliate?.firstName || ''} ${referral.affiliate?.lastName || ''}`.trim(),
       'Payment Status': labelFrom(referral.paymentStatus, paymentStatusOptions),
+      'Referral Type': referral.accountType === 'company' ? 'Company' : 'Individual',
       Email: getReferralEmail(referral) || '',
       Phone: getReferralPhone(referral) || '',
-      Notes: referral.internalNotes || '',
+      'Company Name': referral.companyName || '',
+      'Job Title': referral.jobTitle || '',
+      Notes: referral.notes || '',
     }))
   }, [referrals])
 
@@ -1179,6 +1192,7 @@ export default function AdminPage() {
     visibleColumns.phone ||
     visibleColumns.accountType ||
     visibleColumns.companyName ||
+    visibleColumns.jobTitle ||
     visibleColumns.notes
 
   const hasReferralExtraColumns =
@@ -1186,6 +1200,7 @@ export default function AdminPage() {
     visibleReferralColumns.phone ||
     visibleReferralColumns.referralType ||
     visibleReferralColumns.companyName ||
+    visibleReferralColumns.jobTitle ||
     visibleReferralColumns.notes
 
   return (
@@ -1338,6 +1353,7 @@ export default function AdminPage() {
                           { key: 'phone', label: 'Phone Number' },
                           { key: 'accountType', label: 'Account Type' },
                           { key: 'companyName', label: 'Company Name' },
+                          { key: 'jobTitle', label: 'Job Title' },
                           { key: 'notes', label: 'Notes' },
                         ].map((field) => (
                             <label key={field.key} className="flex items-center gap-2 text-sm text-gray-600">
@@ -1473,6 +1489,9 @@ export default function AdminPage() {
                           {visibleColumns.companyName && (
                             <th className="px-4 py-3 text-left font-semibold">Company Name</th>
                           )}
+                          {visibleColumns.jobTitle && (
+                            <th className="px-4 py-3 text-left font-semibold">Job Title</th>
+                          )}
                           {visibleColumns.notes && (
                             <th className="px-4 py-3 text-left font-semibold">Notes</th>
                           )}
@@ -1589,6 +1608,9 @@ export default function AdminPage() {
                               )}
                               {visibleColumns.companyName && (
                                 <td className="px-4 py-3">{affiliate.companyName || '–'}</td>
+                              )}
+                              {visibleColumns.jobTitle && (
+                                <td className="px-4 py-3">{affiliate.jobTitle || '–'}</td>
                               )}
                               {visibleColumns.notes && (
                                 <td className="px-4 py-3">
@@ -1734,6 +1756,7 @@ export default function AdminPage() {
                           { key: 'email', label: 'Referral Email' },
                           { key: 'phone', label: 'Phone Number' },
                           { key: 'companyName', label: 'Company Name' },
+                          { key: 'jobTitle', label: 'Job Title' },
                           { key: 'notes', label: 'Notes' },
                         ].map((field) => (
                             <label key={field.key} className="flex items-center gap-2 text-sm text-gray-600">
@@ -1762,6 +1785,7 @@ export default function AdminPage() {
                                 phone: false,
                                 referralType: false,
                                 companyName: false,
+                                jobTitle: false,
                                 notes: false,
                               }
                               setDraftVisibleReferralColumns(cleared)
@@ -1866,6 +1890,9 @@ export default function AdminPage() {
                           {visibleReferralColumns.companyName && (
                             <th className="px-4 py-3 text-left font-semibold">Company Name</th>
                           )}
+                          {visibleReferralColumns.jobTitle && (
+                            <th className="px-4 py-3 text-left font-semibold">Job Title</th>
+                          )}
                           {visibleReferralColumns.notes && (
                             <th className="px-4 py-3 text-left font-semibold">Notes</th>
                           )}
@@ -1940,20 +1967,23 @@ export default function AdminPage() {
                               {visibleReferralColumns.companyName && (
                                 <td className="px-4 py-3">{referral.companyName || '-'}</td>
                               )}
+                              {visibleReferralColumns.jobTitle && (
+                                <td className="px-4 py-3">{referral.jobTitle || '-'}</td>
+                              )}
                               {visibleReferralColumns.notes && (
                                 <td className="px-4 py-3">
                                   {isEditing ? (
                                     <input
-                                      value={draft.internalNotes ?? ''}
+                                      value={draft.notes ?? referral.notes ?? ''}
                                       onChange={(event) =>
                                         handleReferralDraftChange(referral.id, {
-                                          internalNotes: event.target.value,
+                                          notes: event.target.value,
                                         })
                                       }
                                       className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm"
                                     />
                                   ) : (
-                                    <span>{referral.internalNotes || '–'}</span>
+                                    <span>{referral.notes || '–'}</span>
                                   )}
                                 </td>
                               )}
@@ -3224,6 +3254,16 @@ export default function AdminPage() {
                   />
                 </div>
               )}
+              {newReferralType === 'company' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Job Title</label>
+                  <input
+                    value={newReferralJobTitle}
+                    onChange={(event) => setNewReferralJobTitle(event.target.value)}
+                    className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                  />
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700">First Name *</label>
                 <input
@@ -3260,34 +3300,36 @@ export default function AdminPage() {
                   compact
                 />
               </div>
-              <div className="md:col-span-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="relative">
-                  <input
-                    type="date"
-                    value={newReferralContractStart}
-                    onChange={(event) => setNewReferralContractStart(event.target.value)}
-                    className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-transparent caret-transparent"
-                  />
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">
-                    {newReferralContractStart
-                      ? formatDateDisplay(newReferralContractStart)
-                      : 'Contract Start Date'}
-                  </span>
+              {newReferralType === 'individual' && (
+                <div className="md:col-span-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={newReferralContractStart}
+                      onChange={(event) => setNewReferralContractStart(event.target.value)}
+                      className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-transparent caret-transparent"
+                    />
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">
+                      {newReferralContractStart
+                        ? formatDateDisplay(newReferralContractStart)
+                        : 'Contract Start Date'}
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={newReferralContractEnd}
+                      onChange={(event) => setNewReferralContractEnd(event.target.value)}
+                      className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-transparent caret-transparent"
+                    />
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">
+                      {newReferralContractEnd
+                        ? formatDateDisplay(newReferralContractEnd)
+                        : 'Contract End Date'}
+                    </span>
+                  </div>
                 </div>
-                <div className="relative">
-                  <input
-                    type="date"
-                    value={newReferralContractEnd}
-                    onChange={(event) => setNewReferralContractEnd(event.target.value)}
-                    className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-transparent caret-transparent"
-                  />
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">
-                    {newReferralContractEnd
-                      ? formatDateDisplay(newReferralContractEnd)
-                      : 'Contract End Date'}
-                  </span>
-                </div>
-              </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700">Work Country</label>
                 <input
@@ -3359,11 +3401,13 @@ export default function AdminPage() {
                     affiliateId: newReferralAffiliateId,
                     accountType: newReferralType,
                     companyName: newReferralType === 'company' ? newReferralCompanyName : undefined,
+                    jobTitle: newReferralType === 'company' ? newReferralJobTitle : undefined,
                     firstName: newReferralFirstName,
                     lastName: newReferralLastName,
                     email: newReferralEmail,
                     phone: `${newReferralPhoneCountry.dial} ${trimmedPhone}`,
-                    contractDuration: newReferralContractDuration || undefined,
+                    contractDuration:
+                      newReferralType === 'individual' ? newReferralContractDuration || undefined : undefined,
                     workCountry: newReferralWorkCountry || undefined,
                     nationality: newReferralNationality || undefined,
                     maritalStatus: newReferralMaritalStatus || undefined,

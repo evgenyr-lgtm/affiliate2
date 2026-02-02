@@ -105,11 +105,13 @@ export default function DashboardPage() {
     email: false,
     phone: false,
     companyName: false,
+    jobTitle: false,
   })
   const [draftVisibleColumns, setDraftVisibleColumns] = useState({
     email: false,
     phone: false,
     companyName: false,
+    jobTitle: false,
   })
   const [referralForm, setReferralForm] = useState({
     firstName: '',
@@ -832,6 +834,7 @@ export default function DashboardPage() {
                         { key: 'email', label: 'Referral Email' },
                         { key: 'phone', label: 'Phone Number' },
                         { key: 'companyName', label: 'Company Name' },
+                        { key: 'jobTitle', label: 'Job Title' },
                       ].map((field) => (
                           <label key={field.key} className="flex items-center gap-2 text-sm text-gray-600">
                             <input
@@ -858,6 +861,7 @@ export default function DashboardPage() {
                             email: false,
                             phone: false,
                             companyName: false,
+                            jobTitle: false,
                           }
                           setDraftVisibleColumns(cleared)
                           setVisibleColumns(cleared)
@@ -939,6 +943,9 @@ export default function DashboardPage() {
                       {visibleColumns.companyName && (
                         <th className="px-4 py-3 text-left font-semibold">Company Name</th>
                       )}
+                      {visibleColumns.jobTitle && (
+                        <th className="px-4 py-3 text-left font-semibold">Job Title</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -961,6 +968,9 @@ export default function DashboardPage() {
                         )}
                         {visibleColumns.companyName && (
                           <td className="px-4 py-3">{referral.companyName || '-'}</td>
+                        )}
+                        {visibleColumns.jobTitle && (
+                          <td className="px-4 py-3">{referral.jobTitle || '-'}</td>
                         )}
                       </tr>
                     ))}

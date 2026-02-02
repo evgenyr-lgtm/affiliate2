@@ -21,6 +21,7 @@ export class AffiliatesService {
           },
         },
         referrals: {
+          where: { deletedAt: null },
           orderBy: { entryDate: 'desc' },
           select: {
             id: true,
@@ -38,7 +39,8 @@ export class AffiliatesService {
             contactLastName: true,
             contactEmail: true,
             contactPhone: true,
-            internalNotes: true,
+            jobTitle: true,
+            notes: true,
           },
         },
       },
