@@ -49,14 +49,20 @@ type ReferralRow = {
   phone?: string
   contactEmail?: string
   contactPhone?: string
+  contractDuration?: string
+  workCountry?: string
+  nationality?: string
+  maritalStatus?: string
   status: 'pending' | 'approved' | 'rejected'
   paymentStatus: 'unpaid' | 'paid' | 'rejected'
   notes?: string
   jobTitle?: string
   entryDate?: string
   affiliate?: {
+    id?: string
     firstName?: string
     lastName?: string
+    companyName?: string
   }
 }
 
@@ -297,7 +303,8 @@ const labelFrom = (value: string, options: { value: string; label: string }[]) =
 const getReferralName = (referral: ReferralRow) => {
   if (referral.accountType === 'company') {
     const contactName = `${referral.contactFirstName || ''} ${referral.contactLastName || ''}`.trim()
-    return contactName || referral.companyName || '-'
+    const fallbackName = `${referral.firstName || ''} ${referral.lastName || ''}`.trim()
+    return contactName || fallbackName || referral.companyName || '-'
   }
   const name = `${referral.firstName || ''} ${referral.lastName || ''}`.trim()
   return name || '-'
@@ -312,6 +319,23 @@ const getReferralPhone = (referral: ReferralRow) =>
   referral.accountType === 'company'
     ? referral.contactPhone || referral.phone || ''
     : referral.phone || referral.contactPhone || ''
+
+const splitContractDuration = (value?: string) => {
+  if (!value) {
+    return { start: '', end: '' }
+  }
+  const [start, end] = value.split(' - ')
+  return {
+    start: (start || '').trim(),
+    end: (end || '').trim(),
+  }
+}
+
+const formatContractPart = (value?: string) => {
+  if (!value) return '-'
+  return formatDateDisplay(value) || value
+}
+
 
 export default function AdminPage() {
   const router = useRouter()
@@ -368,17 +392,27 @@ export default function AdminPage() {
   const [visibleReferralColumns, setVisibleReferralColumns] = useState({
     email: false,
     phone: false,
-    referralType: false,
+    accountType: false,
     companyName: false,
     jobTitle: false,
+    workCountry: false,
+    nationality: false,
+    contractStartDate: false,
+    contractEndDate: false,
+    maritalStatus: false,
     notes: false,
   })
   const [draftVisibleReferralColumns, setDraftVisibleReferralColumns] = useState({
     email: false,
     phone: false,
-    referralType: false,
+    accountType: false,
     companyName: false,
     jobTitle: false,
+    workCountry: false,
+    nationality: false,
+    contractStartDate: false,
+    contractEndDate: false,
+    maritalStatus: false,
     notes: false,
   })
   const [referralDrafts, setReferralDrafts] = useState<Record<string, any>>({})
@@ -523,9 +557,14 @@ export default function AdminPage() {
         const next = {
           email: false,
           phone: false,
-          referralType: false,
+          accountType: false,
           companyName: false,
           jobTitle: false,
+          workCountry: false,
+          nationality: false,
+          contractStartDate: false,
+          contractEndDate: false,
+          maritalStatus: false,
           notes: false,
           ...parsed,
         }
@@ -1096,7 +1135,7 @@ export default function AdminPage() {
       Currency: affiliate.currency || 'USD',
       Email: affiliate.user?.email || '',
       Phone: affiliate.phone || '',
-      'Registration Type': affiliate.accountType === 'company' ? 'Company' : 'Individual',
+      'Account Type': affiliate.accountType === 'company' ? 'Company' : 'Individual',
       'Company Name': affiliate.companyName || '–',
     }))
   }, [affiliates])
@@ -1106,11 +1145,11 @@ export default function AdminPage() {
     return referrals.map((referral: ReferralRow): ExportRow => ({
       'Referral Registration ID': referral.referralNumber ?? '',
       'Referral Name': getReferralName(referral),
-      'Referral Registration Date': formatDate(referral.entryDate),
+      'Date of Registration': formatDate(referral.entryDate),
       Status: labelFrom(referral.status, referralStatusOptions),
-      Affiliate: `${referral.affiliate?.firstName || ''} ${referral.affiliate?.lastName || ''}`.trim(),
+      'Affiliate Name': `${referral.affiliate?.firstName || ''} ${referral.affiliate?.lastName || ''}`.trim(),
       'Payment Status': labelFrom(referral.paymentStatus, paymentStatusOptions),
-      'Referral Type': referral.accountType === 'company' ? 'Company' : 'Individual',
+      'Account Type': referral.accountType === 'company' ? 'Company' : 'Individual',
       Email: getReferralEmail(referral) || '',
       Phone: getReferralPhone(referral) || '',
       'Company Name': referral.companyName || '',
@@ -1198,9 +1237,14 @@ export default function AdminPage() {
   const hasReferralExtraColumns =
     visibleReferralColumns.email ||
     visibleReferralColumns.phone ||
-    visibleReferralColumns.referralType ||
+    visibleReferralColumns.accountType ||
     visibleReferralColumns.companyName ||
     visibleReferralColumns.jobTitle ||
+    visibleReferralColumns.workCountry ||
+    visibleReferralColumns.nationality ||
+    visibleReferralColumns.contractStartDate ||
+    visibleReferralColumns.contractEndDate ||
+    visibleReferralColumns.maritalStatus ||
     visibleReferralColumns.notes
 
   return (
@@ -1320,7 +1364,10 @@ export default function AdminPage() {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setShowAddAffiliateModal(true)}
+                    onClick={() => {
+                      setShowAffiliatePassword(false)
+                      setShowAddAffiliateModal(true)
+                    }}
                     className="inline-flex items-center gap-2 rounded-md bg-[#2b36ff] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#2330f0]"
                   >
                     Add an Affiliate
@@ -1382,6 +1429,7 @@ export default function AdminPage() {
                                 phone: false,
                                 accountType: false,
                                 companyName: false,
+                                jobTitle: false,
                                 notes: false,
                               }
                               setDraftVisibleColumns(cleared)
@@ -1484,7 +1532,7 @@ export default function AdminPage() {
                             <th className="px-4 py-3 text-left font-semibold">Phone</th>
                           )}
                           {visibleColumns.accountType && (
-                            <th className="px-4 py-3 text-left font-semibold">Registration Type</th>
+                            <th className="px-4 py-3 text-left font-semibold">Account Type</th>
                           )}
                           {visibleColumns.companyName && (
                             <th className="px-4 py-3 text-left font-semibold">Company Name</th>
@@ -1752,11 +1800,16 @@ export default function AdminPage() {
                         <p className="text-sm font-medium text-gray-700 mb-2">Additional fields</p>
                         <div className="grid grid-cols-1 gap-2">
                         {[
-                          { key: 'referralType', label: 'Referral Type' },
+                          { key: 'accountType', label: 'Account Type' },
                           { key: 'email', label: 'Referral Email' },
                           { key: 'phone', label: 'Phone Number' },
                           { key: 'companyName', label: 'Company Name' },
                           { key: 'jobTitle', label: 'Job Title' },
+                          { key: 'workCountry', label: 'Work Country' },
+                          { key: 'nationality', label: 'Nationality' },
+                          { key: 'contractStartDate', label: 'Contract Start Date' },
+                          { key: 'contractEndDate', label: 'Contract End Date' },
+                          { key: 'maritalStatus', label: 'Marital Status' },
                           { key: 'notes', label: 'Notes' },
                         ].map((field) => (
                             <label key={field.key} className="flex items-center gap-2 text-sm text-gray-600">
@@ -1783,9 +1836,14 @@ export default function AdminPage() {
                               const cleared = {
                                 email: false,
                                 phone: false,
-                                referralType: false,
+                                accountType: false,
                                 companyName: false,
                                 jobTitle: false,
+                                workCountry: false,
+                                nationality: false,
+                                contractStartDate: false,
+                                contractEndDate: false,
+                                maritalStatus: false,
                                 notes: false,
                               }
                               setDraftVisibleReferralColumns(cleared)
@@ -1874,12 +1932,12 @@ export default function AdminPage() {
                         <tr>
                           <th className="px-4 py-3 text-left font-semibold">#</th>
                           <th className="px-4 py-3 text-left font-semibold">Referral Name</th>
-                          <th className="px-4 py-3 text-left font-semibold">Referral Registration Date</th>
+                          <th className="px-4 py-3 text-left font-semibold">Date of Registration</th>
                           <th className="px-4 py-3 text-left font-semibold">Status</th>
-                          <th className="px-4 py-3 text-left font-semibold">Affiliate</th>
+                          <th className="px-4 py-3 text-left font-semibold">Affiliate Name</th>
                           <th className="px-4 py-3 text-left font-semibold">Payment Status</th>
-                          {visibleReferralColumns.referralType && (
-                            <th className="px-4 py-3 text-left font-semibold">Referral Type</th>
+                          {visibleReferralColumns.accountType && (
+                            <th className="px-4 py-3 text-left font-semibold">Account Type</th>
                           )}
                           {visibleReferralColumns.email && (
                             <th className="px-4 py-3 text-left font-semibold">Referral Email</th>
@@ -1892,6 +1950,21 @@ export default function AdminPage() {
                           )}
                           {visibleReferralColumns.jobTitle && (
                             <th className="px-4 py-3 text-left font-semibold">Job Title</th>
+                          )}
+                          {visibleReferralColumns.workCountry && (
+                            <th className="px-4 py-3 text-left font-semibold">Work Country</th>
+                          )}
+                          {visibleReferralColumns.nationality && (
+                            <th className="px-4 py-3 text-left font-semibold">Nationality</th>
+                          )}
+                          {visibleReferralColumns.contractStartDate && (
+                            <th className="px-4 py-3 text-left font-semibold">Contract Start Date</th>
+                          )}
+                          {visibleReferralColumns.contractEndDate && (
+                            <th className="px-4 py-3 text-left font-semibold">Contract End Date</th>
+                          )}
+                          {visibleReferralColumns.maritalStatus && (
+                            <th className="px-4 py-3 text-left font-semibold">Marital Status</th>
                           )}
                           {visibleReferralColumns.notes && (
                             <th className="px-4 py-3 text-left font-semibold">Notes</th>
@@ -1933,7 +2006,20 @@ export default function AdminPage() {
                                 </select>
                               </td>
                               <td className="px-4 py-3">
-                                {referral.affiliate?.firstName} {referral.affiliate?.lastName}
+                                <button
+                                  type="button"
+                                  className="text-left text-gray-700 hover:underline"
+                                  onClick={() => {
+                                    const affiliate = affiliates?.find(
+                                      (item: AffiliateRow) => item.id === referral.affiliate?.id
+                                    )
+                                    if (affiliate) {
+                                      setSelectedAffiliate(affiliate)
+                                    }
+                                  }}
+                                >
+                                  {referral.affiliate?.firstName} {referral.affiliate?.lastName}
+                                </button>
                               </td>
                               <td className="px-4 py-3">
                                 <select
@@ -1953,7 +2039,7 @@ export default function AdminPage() {
                                   ))}
                                 </select>
                               </td>
-                              {visibleReferralColumns.referralType && (
+                              {visibleReferralColumns.accountType && (
                                 <td className="px-4 py-3">
                                   {referral.accountType === 'company' ? 'Company' : 'Individual'}
                                 </td>
@@ -1969,6 +2055,25 @@ export default function AdminPage() {
                               )}
                               {visibleReferralColumns.jobTitle && (
                                 <td className="px-4 py-3">{referral.jobTitle || '-'}</td>
+                              )}
+                              {visibleReferralColumns.workCountry && (
+                                <td className="px-4 py-3">{referral.workCountry || '-'}</td>
+                              )}
+                              {visibleReferralColumns.nationality && (
+                                <td className="px-4 py-3">{referral.nationality || '-'}</td>
+                              )}
+                              {visibleReferralColumns.contractStartDate && (
+                                <td className="px-4 py-3">
+                                  {formatContractPart(splitContractDuration(referral.contractDuration).start)}
+                                </td>
+                              )}
+                              {visibleReferralColumns.contractEndDate && (
+                                <td className="px-4 py-3">
+                                  {formatContractPart(splitContractDuration(referral.contractDuration).end)}
+                                </td>
+                              )}
+                              {visibleReferralColumns.maritalStatus && (
+                                <td className="px-4 py-3">{referral.maritalStatus || '-'}</td>
                               )}
                               {visibleReferralColumns.notes && (
                                 <td className="px-4 py-3">
@@ -2774,20 +2879,27 @@ export default function AdminPage() {
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">Affiliate Details</h3>
               <button
-                className="text-gray-500 hover:text-gray-700"
+                className="text-2xl leading-none text-gray-500 hover:text-gray-700"
                 onClick={() => setSelectedAffiliate(null)}
               >
                 ×
               </button>
             </div>
             <div className="mt-4 grid grid-cols-1 gap-3 text-sm text-gray-700">
-              <p><span className="font-semibold">Name:</span> {selectedAffiliate.firstName} {selectedAffiliate.lastName}</p>
+              <p>
+                <span className="font-semibold">Account Type:</span>{' '}
+                {selectedAffiliate.accountType === 'company' ? 'Company' : 'Individual'}
+              </p>
+              <p>
+                <span className="font-semibold">Affiliate Name:</span> {selectedAffiliate.firstName}{' '}
+                {selectedAffiliate.lastName}
+              </p>
               <p><span className="font-semibold">Email:</span> {selectedAffiliate.user?.email || '-'}</p>
-              <p><span className="font-semibold">Phone:</span> {selectedAffiliate.phone || '-'}</p>
-              <p><span className="font-semibold">Account Type:</span> {selectedAffiliate.accountType}</p>
+              <p><span className="font-semibold">Phone Number:</span> {selectedAffiliate.phone || '-'}</p>
               <p><span className="font-semibold">Company:</span> {selectedAffiliate.companyName || '-'}</p>
-              <p><span className="font-semibold">Status:</span> {labelFrom(selectedAffiliate.status, statusOptions)}</p>
-              <p><span className="font-semibold">Registered:</span> {formatDate(selectedAffiliate.createdAt)}</p>
+              <p><span className="font-semibold">Job Title:</span> {selectedAffiliate.jobTitle || '-'}</p>
+              <p><span className="font-semibold">Date of Registration:</span> {formatDate(selectedAffiliate.createdAt)}</p>
+              <p><span className="font-semibold">Notes:</span> {selectedAffiliate.internalNotes || '-'}</p>
             </div>
           </div>
         </div>
@@ -2805,21 +2917,39 @@ export default function AdminPage() {
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">Referral Details</h3>
               <button
-                className="text-gray-500 hover:text-gray-700"
+                className="text-2xl leading-none text-gray-500 hover:text-gray-700"
                 onClick={() => setSelectedReferral(null)}
               >
                 ×
               </button>
             </div>
             <div className="mt-4 grid grid-cols-1 gap-3 text-sm text-gray-700">
-              <p><span className="font-semibold">Referral:</span> {getReferralName(selectedReferral)}</p>
-              <p><span className="font-semibold">Affiliate:</span> {selectedReferral.affiliate?.firstName} {selectedReferral.affiliate?.lastName}</p>
+              <p>
+                <span className="font-semibold">Account Type:</span>{' '}
+                {selectedReferral.accountType === 'company' ? 'Company' : 'Individual'}
+              </p>
+              <p><span className="font-semibold">Referral Name:</span> {getReferralName(selectedReferral)}</p>
+              <p>
+                <span className="font-semibold">Affiliate Name:</span>{' '}
+                {selectedReferral.affiliate?.firstName} {selectedReferral.affiliate?.lastName}
+              </p>
               <p><span className="font-semibold">Email:</span> {getReferralEmail(selectedReferral) || '-'}</p>
-              <p><span className="font-semibold">Phone:</span> {getReferralPhone(selectedReferral) || '-'}</p>
-              <p><span className="font-semibold">Status:</span> {labelFrom(selectedReferral.status, referralStatusOptions)}</p>
-              <p><span className="font-semibold">Payment Status:</span> {labelFrom(selectedReferral.paymentStatus, paymentStatusOptions)}</p>
-              <p><span className="font-semibold">Date:</span> {formatDate(selectedReferral.entryDate)}</p>
-              <p><span className="font-semibold">Notes:</span> {selectedReferral.internalNotes || '-'}</p>
+              <p><span className="font-semibold">Phone Number:</span> {getReferralPhone(selectedReferral) || '-'}</p>
+              <p><span className="font-semibold">Company:</span> {selectedReferral.companyName || '-'}</p>
+              <p><span className="font-semibold">Job Title:</span> {selectedReferral.jobTitle || '-'}</p>
+              <p><span className="font-semibold">Work Country:</span> {selectedReferral.workCountry || '-'}</p>
+              <p><span className="font-semibold">Nationality:</span> {selectedReferral.nationality || '-'}</p>
+              <p>
+                <span className="font-semibold">Contract Start Date:</span>{' '}
+                {formatContractPart(splitContractDuration(selectedReferral.contractDuration).start)}
+              </p>
+              <p>
+                <span className="font-semibold">Contract End Date:</span>{' '}
+                {formatContractPart(splitContractDuration(selectedReferral.contractDuration).end)}
+              </p>
+              <p><span className="font-semibold">Marital Status:</span> {selectedReferral.maritalStatus || '-'}</p>
+              <p><span className="font-semibold">Date of Registration:</span> {formatDate(selectedReferral.entryDate)}</p>
+              <p><span className="font-semibold">Notes:</span> {selectedReferral.notes || '-'}</p>
             </div>
           </div>
         </div>
@@ -2947,13 +3077,25 @@ export default function AdminPage() {
         </div>
       )}
       {showAddAffiliateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          onClick={() => {
+            setShowAffiliatePassword(false)
+            setShowAddAffiliateModal(false)
+          }}
+        >
+          <div
+            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">Add an Affiliate</h3>
               <button
-                className="text-gray-500 hover:text-gray-700"
-                onClick={() => setShowAddAffiliateModal(false)}
+                className="text-2xl leading-none text-gray-500 hover:text-gray-700"
+                onClick={() => {
+                  setShowAffiliatePassword(false)
+                  setShowAddAffiliateModal(false)
+                }}
               >
                 ×
               </button>
@@ -3127,7 +3269,7 @@ export default function AdminPage() {
                     onClick={() => {
                       const generated = generatePassword()
                       setNewAffiliatePassword(generated)
-                      setShowAffiliatePassword(true)
+                      setShowAffiliatePassword(false)
                     }}
                   >
                     Generate
@@ -3151,7 +3293,10 @@ export default function AdminPage() {
             <div className="mt-6 flex justify-end gap-3">
               <button
                 className="rounded-md border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700"
-                onClick={() => setShowAddAffiliateModal(false)}
+                onClick={() => {
+                  setShowAffiliatePassword(false)
+                  setShowAddAffiliateModal(false)
+                }}
               >
                 Cancel
               </button>
@@ -3206,12 +3351,18 @@ export default function AdminPage() {
         </div>
       )}
       {showAddReferralModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          onClick={() => setShowAddReferralModal(false)}
+        >
+          <div
+            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">Add a Referral</h3>
               <button
-                className="text-gray-500 hover:text-gray-700"
+                className="text-2xl leading-none text-gray-500 hover:text-gray-700"
                 onClick={() => setShowAddReferralModal(false)}
               >
                 ×
@@ -3234,7 +3385,7 @@ export default function AdminPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Referral Type</label>
+                <label className="block text-sm font-medium text-gray-700">Account Type</label>
                 <select
                   value={newReferralType}
                   onChange={(event) => setNewReferralType(event.target.value as 'individual' | 'company')}
@@ -3309,7 +3460,11 @@ export default function AdminPage() {
                       onChange={(event) => setNewReferralContractStart(event.target.value)}
                       className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-transparent caret-transparent"
                     />
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">
+                    <span
+                      className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm ${
+                        newReferralContractStart ? 'text-gray-900' : 'text-gray-500'
+                      }`}
+                    >
                       {newReferralContractStart
                         ? formatDateDisplay(newReferralContractStart)
                         : 'Contract Start Date'}
@@ -3322,7 +3477,11 @@ export default function AdminPage() {
                       onChange={(event) => setNewReferralContractEnd(event.target.value)}
                       className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-transparent caret-transparent"
                     />
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">
+                    <span
+                      className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm ${
+                        newReferralContractEnd ? 'text-gray-900' : 'text-gray-500'
+                      }`}
+                    >
                       {newReferralContractEnd
                         ? formatDateDisplay(newReferralContractEnd)
                         : 'Contract End Date'}
@@ -3402,10 +3561,20 @@ export default function AdminPage() {
                     accountType: newReferralType,
                     companyName: newReferralType === 'company' ? newReferralCompanyName : undefined,
                     jobTitle: newReferralType === 'company' ? newReferralJobTitle : undefined,
-                    firstName: newReferralFirstName,
-                    lastName: newReferralLastName,
-                    email: newReferralEmail,
-                    phone: `${newReferralPhoneCountry.dial} ${trimmedPhone}`,
+                    firstName: newReferralType === 'individual' ? newReferralFirstName : undefined,
+                    lastName: newReferralType === 'individual' ? newReferralLastName : undefined,
+                    email: newReferralType === 'individual' ? newReferralEmail : undefined,
+                    phone:
+                      newReferralType === 'individual'
+                        ? `${newReferralPhoneCountry.dial} ${trimmedPhone}`
+                        : undefined,
+                    contactFirstName: newReferralType === 'company' ? newReferralFirstName : undefined,
+                    contactLastName: newReferralType === 'company' ? newReferralLastName : undefined,
+                    contactEmail: newReferralType === 'company' ? newReferralEmail : undefined,
+                    contactPhone:
+                      newReferralType === 'company'
+                        ? `${newReferralPhoneCountry.dial} ${trimmedPhone}`
+                        : undefined,
                     contractDuration:
                       newReferralType === 'individual' ? newReferralContractDuration || undefined : undefined,
                     workCountry: newReferralWorkCountry || undefined,

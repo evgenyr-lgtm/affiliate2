@@ -67,7 +67,8 @@ const labelFrom = (value: string) =>
 const getReferralName = (referral: ReferralRow) => {
   if (referral.accountType === 'company') {
     const contactName = `${referral.contactFirstName || ''} ${referral.contactLastName || ''}`.trim()
-    return contactName || referral.companyName || '-'
+    const fallbackName = `${referral.firstName || ''} ${referral.lastName || ''}`.trim()
+    return contactName || fallbackName || referral.companyName || '-'
   }
   const name = `${referral.firstName || ''} ${referral.lastName || ''}`.trim()
   return name || '-'
@@ -183,6 +184,7 @@ export default function DashboardPage() {
           email: false,
           phone: false,
           companyName: false,
+          jobTitle: false,
           ...parsed,
         }
         setVisibleColumns(next)
@@ -617,13 +619,6 @@ export default function DashboardPage() {
                           <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-500">
                             {contractStart ? formatDateDisplay(contractStart) : 'Contract Start Date'}
                           </span>
-                          <svg
-                            className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                          >
-                            <path d="M6 2a1 1 0 0 1 1 1v1h6V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 1 1 2 0v1Zm12 8v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6h16Z" />
-                          </svg>
                         </div>
                         <div className="relative">
                           <input
@@ -635,13 +630,6 @@ export default function DashboardPage() {
                           <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-500">
                             {contractEnd ? formatDateDisplay(contractEnd) : 'Contract End Date'}
                           </span>
-                          <svg
-                            className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                          >
-                            <path d="M6 2a1 1 0 0 1 1 1v1h6V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 1 1 2 0v1Zm12 8v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6h16Z" />
-                          </svg>
                         </div>
                       </div>
                       <input
