@@ -211,6 +211,13 @@ export class AdminService {
       throw new NotFoundException('Affiliate not found');
     }
 
+    const now = new Date();
+
+    await this.prisma.referral.updateMany({
+      where: { affiliateId: affiliate.id },
+      data: { deletedAt: now },
+    });
+
     await this.prisma.user.delete({
       where: { id: affiliate.userId },
     });

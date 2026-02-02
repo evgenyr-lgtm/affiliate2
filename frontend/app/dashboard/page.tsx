@@ -339,8 +339,8 @@ export default function DashboardPage() {
   const isManualSubmitDisabled =
     manualReferralMutation.isPending ||
     (referralType === 'individual'
-      ? !referralForm.firstName || !referralForm.email
-      : !referralForm.contactFirstName || !referralForm.contactEmail)
+      ? !referralForm.firstName || !referralForm.lastName || !referralForm.email
+      : !referralForm.companyName || !referralForm.contactFirstName || !referralForm.contactLastName || !referralForm.contactEmail)
 
   if (isLoading) {
     return <div className="p-8">Loading...</div>
@@ -583,7 +583,7 @@ export default function DashboardPage() {
                           setReferralForm((prev) => ({ ...prev, lastName: event.target.value }))
                         }
                         className="rounded-full border border-gray-200 px-4 py-3 text-sm text-gray-900"
-                        placeholder="Last Name"
+                        placeholder="Last Name*"
                       />
                       <input
                         value={referralForm.email}
@@ -695,7 +695,7 @@ export default function DashboardPage() {
                           setReferralForm((prev) => ({ ...prev, companyName: event.target.value }))
                         }
                         className="rounded-full border border-gray-200 px-4 py-3 text-sm text-gray-900"
-                        placeholder="Company Name"
+                        placeholder="Company Name*"
                       />
                       <input
                         value={referralForm.country}
@@ -719,7 +719,7 @@ export default function DashboardPage() {
                           setReferralForm((prev) => ({ ...prev, contactLastName: event.target.value }))
                         }
                         className="rounded-full border border-gray-200 px-4 py-3 text-sm text-gray-900"
-                        placeholder="Last Name"
+                        placeholder="Last Name*"
                       />
                       <input
                         value={referralForm.jobTitle}
@@ -727,7 +727,7 @@ export default function DashboardPage() {
                           setReferralForm((prev) => ({ ...prev, jobTitle: event.target.value }))
                         }
                         className="rounded-full border border-gray-200 px-4 py-3 text-sm text-gray-900"
-                        placeholder="Job title"
+                        placeholder="Job Title"
                       />
                       <input
                         value={referralForm.contactEmail}
@@ -969,6 +969,18 @@ export default function DashboardPage() {
           </section>
         </div>
       </main>
+      <footer className="py-6 text-center text-xs font-light text-gray-400">
+        <div>Access Financial Affiliate Portal V1</div>
+        <div>
+          If you experience any issues, please contact{' '}
+          <a
+            href="mailto:marketing@accessfinancial.com"
+            className="text-gray-400 hover:text-gray-500 underline"
+          >
+            marketing@accessfinancial.com
+          </a>
+        </div>
+      </footer>
     </div>
   )
 }

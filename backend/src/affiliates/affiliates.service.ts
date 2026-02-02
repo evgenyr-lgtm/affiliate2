@@ -153,6 +153,11 @@ export class AffiliatesService {
 
     const now = new Date();
 
+    await this.prisma.referral.updateMany({
+      where: { affiliateId: affiliate.id },
+      data: { deletedAt: now },
+    });
+
     await this.prisma.affiliate.update({
       where: { userId },
       data: { deletedAt: now },
