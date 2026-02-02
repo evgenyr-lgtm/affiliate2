@@ -28,6 +28,7 @@ type ReferralRow = {
   contactLastName?: string
   contactEmail?: string
   contactPhone?: string
+  jobTitle?: string
   internalNotes?: string
 }
 
