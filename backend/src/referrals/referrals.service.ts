@@ -62,6 +62,48 @@ export class ReferralsService {
     return referral;
   }
 
+  async createManualReferralForAffiliateId(dto: CreateManualReferralDto, affiliateId: string) {
+    const affiliate = await this.prisma.affiliate.findUnique({
+      where: { id: affiliateId },
+    });
+
+    if (!affiliate) {
+      throw new NotFoundException('Affiliate not found');
+    }
+
+    const referral = await this.prisma.referral.create({
+      data: {
+        affiliateId: affiliate.id,
+        accountType: dto.accountType,
+        // Individual fields
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        email: dto.email,
+        phone: dto.phone,
+        contractDuration: dto.contractDuration,
+        workCountry: dto.workCountry,
+        nationality: dto.nationality,
+        maritalStatus: dto.maritalStatus,
+        // Company fields
+        companyName: dto.companyName,
+        country: dto.country,
+        contactFirstName: dto.contactFirstName,
+        contactLastName: dto.contactLastName,
+        contactEmail: dto.contactEmail,
+        contactPhone: dto.contactPhone,
+        jobTitle: dto.jobTitle,
+        linkedin: dto.linkedin,
+        // Common
+        notes: dto.notes,
+        status: ReferralStatus.pending,
+        paymentStatus: PaymentStatus.unpaid,
+      },
+    });
+
+    await this.emailService.sendNewReferralNotification(referral);
+    return referral;
+  }
+
   async createReferralFromLink(dto: CreateManualReferralDto, affiliateSlug?: string, cookieSlug?: string) {
     // Use affiliateSlug from query param, fallback to cookie
     const slug = affiliateSlug || cookieSlug;

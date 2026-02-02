@@ -5,7 +5,7 @@ import { CreateAffiliateDto } from './dto/create-affiliate.dto';
 import { UpdateCommissionDto } from './dto/update-commission.dto';
 import { UpdateAffiliateAdminDto } from './dto/update-affiliate-admin.dto';
 import { UpdateAdminProfileDto } from './dto/update-admin-profile.dto';
-import { AffiliateStatus } from '@prisma/client';
+import { AffiliateStatus, UserRole, PaymentTerm, RateType } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -219,9 +219,71 @@ export class AdminService {
   }
 
   async createAffiliateManually(dto: CreateAffiliateDto) {
-    // This would create both user and affiliate
-    // Implementation similar to registration but without email verification requirement
-    // For brevity, showing structure
-    throw new Error('Manual affiliate creation not yet implemented');
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+
+    if (existingUser) {
+      throw new BadRequestException('Email already registered');
+    }
+
+    if (!dto.password || dto.password.length < 8) {
+      throw new BadRequestException('Password must be at least 8 characters');
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    const slug = await this.generateAffiliateSlug(dto.firstName, dto.lastName);
+
+    const status = dto.status ?? AffiliateStatus.pending;
+    const paymentTerm = dto.paymentTerm ?? PaymentTerm.monthly;
+    const rateType = dto.rateType ?? RateType.percent;
+    const rateValue = dto.rateValue ?? 0;
+    const currency = dto.currency ?? 'USD';
+
+    return this.prisma.user.create({
+      data: {
+        email: dto.email,
+        password: hashedPassword,
+        role: UserRole.AFFILIATE,
+        emailVerified: true,
+        affiliate: {
+          create: {
+            slug,
+            accountType: dto.accountType,
+            firstName: dto.firstName,
+            lastName: dto.lastName,
+            companyName: dto.companyName,
+            jobTitle: dto.jobTitle,
+            phone: dto.phone,
+            internalNotes: dto.internalNotes,
+            status,
+            paymentTerm,
+            rateType,
+            rateValue,
+            currency,
+          },
+        },
+      },
+      include: { affiliate: true },
+    });
+  }
+
+  private async generateAffiliateSlug(firstName: string, lastName: string): Promise<string> {
+    const baseSlug = `${firstName.toLowerCase()}${lastName.toLowerCase()}`.replace(/[^a-z0-9]/g, '');
+    let slug = baseSlug;
+    let counter = 1;
+
+    while (true) {
+      const existing = await this.prisma.affiliate.findUnique({
+        where: { slug },
+      });
+
+      if (!existing) {
+        return slug;
+      }
+
+      slug = `${baseSlug}${counter}`;
+      counter++;
+    }
   }
 }

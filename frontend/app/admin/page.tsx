@@ -10,6 +10,8 @@ import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import Image from 'next/image'
+import PhoneCountrySelect from '@/components/PhoneCountrySelect'
+import { phoneCountries } from '@/lib/phoneCountries'
 
 type AffiliateRow = {
   id: string
@@ -75,6 +77,8 @@ type EmailTemplateRow = {
   enabled: boolean
   variables?: string[]
 }
+
+type PasswordStrength = 'Easy' | 'Medium' | 'Strong'
 
 type ExportRow = Record<string, string | number>
 
@@ -151,11 +155,44 @@ const formatInputDate = (value?: string) => {
   return `${year}-${month}-${day}`
 }
 
+const formatDateDisplay = (value?: string) => {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return new Intl.DateTimeFormat('en-GB').format(date)
+}
+
+const getPasswordStrength = (password: string): PasswordStrength => {
+  const lengthScore = password.length >= 12 ? 2 : password.length >= 8 ? 1 : 0
+  const hasLower = /[a-z]/.test(password)
+  const hasUpper = /[A-Z]/.test(password)
+  const hasNumber = /\d/.test(password)
+  const hasSymbol = /[^A-Za-z0-9]/.test(password)
+  const variety = [hasLower, hasUpper, hasNumber, hasSymbol].filter(Boolean).length
+  const score = lengthScore + variety
+
+  if (password.length >= 12 && variety >= 4 && score >= 5) return 'Strong'
+  if (password.length >= 8 && variety >= 3) return 'Medium'
+  return 'Easy'
+}
+
+const generatePassword = () => {
+  const chars =
+    'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*()-_=+'
+  let result = ''
+  for (let i = 0; i < 14; i += 1) {
+    result += chars[Math.floor(Math.random() * chars.length)]
+  }
+  return result
+}
+
 const buildShareLinks = (url: string) => ({
   Telegram: `https://t.me/share/url?url=${encodeURIComponent(url)}`,
   WhatsApp: `https://wa.me/?text=${encodeURIComponent(url)}`,
   LinkedIn: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`,
-  Email: `mailto:?subject=${encodeURIComponent('Marketing Materials')}&body=${encodeURIComponent(url)}`,
+  Email: `mailto:?subject=${encodeURIComponent('Marketing Materials')}&body=${encodeURIComponent(
+    `Download link: ${url}`
+  )}`,
   Facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
 })
 
@@ -343,20 +380,61 @@ export default function AdminPage() {
   const [visibleReferralColumns, setVisibleReferralColumns] = useState({
     email: false,
     phone: false,
+    referralType: false,
+    companyName: false,
     notes: false,
   })
   const [draftVisibleReferralColumns, setDraftVisibleReferralColumns] = useState({
     email: false,
     phone: false,
+    referralType: false,
+    companyName: false,
     notes: false,
   })
   const [referralDrafts, setReferralDrafts] = useState<Record<string, any>>({})
+  const [showAddAffiliateModal, setShowAddAffiliateModal] = useState(false)
+  const [showAddReferralModal, setShowAddReferralModal] = useState(false)
+  const [newAffiliateAccountType, setNewAffiliateAccountType] = useState<'individual' | 'company'>(
+    'individual'
+  )
+  const [newAffiliateFirstName, setNewAffiliateFirstName] = useState('')
+  const [newAffiliateLastName, setNewAffiliateLastName] = useState('')
+  const [newAffiliateEmail, setNewAffiliateEmail] = useState('')
+  const [newAffiliateCompanyName, setNewAffiliateCompanyName] = useState('')
+  const [newAffiliateJobTitle, setNewAffiliateJobTitle] = useState('')
+  const [newAffiliateStatus, setNewAffiliateStatus] = useState<'pending' | 'active' | 'rejected'>(
+    'pending'
+  )
+  const [newAffiliatePaymentTerm, setNewAffiliatePaymentTerm] = useState<
+    'weekly' | 'monthly' | 'quarterly' | 'yearly'
+  >('monthly')
+  const [newAffiliateRateType, setNewAffiliateRateType] = useState<'percent' | 'fixed'>('percent')
+  const [newAffiliateRateValue, setNewAffiliateRateValue] = useState('')
+  const [newAffiliateCurrency, setNewAffiliateCurrency] = useState('USD')
+  const [newAffiliateNotes, setNewAffiliateNotes] = useState('')
+  const [newAffiliatePassword, setNewAffiliatePassword] = useState('')
+  const [showAffiliatePassword, setShowAffiliatePassword] = useState(false)
+  const [newAffiliatePhoneCountry, setNewAffiliatePhoneCountry] = useState(phoneCountries[0])
+  const [newAffiliatePhoneNumber, setNewAffiliatePhoneNumber] = useState('')
+  const [newReferralAffiliateId, setNewReferralAffiliateId] = useState('')
+  const [newReferralType, setNewReferralType] = useState<'individual' | 'company'>('individual')
+  const [newReferralCompanyName, setNewReferralCompanyName] = useState('')
+  const [newReferralFirstName, setNewReferralFirstName] = useState('')
+  const [newReferralLastName, setNewReferralLastName] = useState('')
+  const [newReferralEmail, setNewReferralEmail] = useState('')
+  const [newReferralPhoneCountry, setNewReferralPhoneCountry] = useState(phoneCountries[0])
+  const [newReferralPhoneNumber, setNewReferralPhoneNumber] = useState('')
+  const [newReferralContractStart, setNewReferralContractStart] = useState('')
+  const [newReferralContractEnd, setNewReferralContractEnd] = useState('')
+  const [newReferralWorkCountry, setNewReferralWorkCountry] = useState('')
+  const [newReferralNationality, setNewReferralNationality] = useState('')
+  const [newReferralMaritalStatus, setNewReferralMaritalStatus] = useState('')
+  const [newReferralNotes, setNewReferralNotes] = useState('')
   const profileMenuRef = useRef<HTMLDivElement | null>(null)
   const affiliateFilterRef = useRef<HTMLDivElement | null>(null)
   const affiliateExportRef = useRef<HTMLDivElement | null>(null)
   const referralFilterRef = useRef<HTMLDivElement | null>(null)
   const referralExportRef = useRef<HTMLDivElement | null>(null)
-  const documentShareRef = useRef<HTMLDivElement | null>(null)
   const baseUrl = getBackendBaseUrl()
   const { data: adminProfile } = useQuery({
     queryKey: ['admin-profile'],
@@ -403,8 +481,11 @@ export default function AdminPage() {
       ) {
         setReferralExportMenuOpen(false)
       }
-      if (openShareDocumentId && documentShareRef.current && !documentShareRef.current.contains(target)) {
-        setOpenShareDocumentId(null)
+      if (openShareDocumentId) {
+        const el = target as HTMLElement
+        if (!el.closest('[data-share-root]')) {
+          setOpenShareDocumentId(null)
+        }
       }
     }
 
@@ -450,6 +531,8 @@ export default function AdminPage() {
         const next = {
           email: false,
           phone: false,
+          referralType: false,
+          companyName: false,
           notes: false,
           ...parsed,
         }
@@ -476,6 +559,23 @@ export default function AdminPage() {
       return response.data
     },
   })
+
+  const affiliateOptions = useMemo(() => {
+    if (!affiliates) return []
+    return [...affiliates].sort(
+      (a: AffiliateRow, b: AffiliateRow) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+  }, [affiliates])
+
+  const newAffiliatePasswordStrength = useMemo(() => {
+    if (!newAffiliatePassword) return null
+    return getPasswordStrength(newAffiliatePassword)
+  }, [newAffiliatePassword])
+
+  const newReferralContractDuration = useMemo(() => {
+    return [newReferralContractStart, newReferralContractEnd].filter(Boolean).join(' - ')
+  }, [newReferralContractEnd, newReferralContractStart])
 
   const { data: documents, isLoading: documentsLoading } = useQuery({
     queryKey: ['admin-documents'],
@@ -595,6 +695,36 @@ export default function AdminPage() {
     },
   })
 
+  const createAffiliateMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return api.post('/admin/affiliates', data)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-affiliates'] })
+      toast.success('Affiliate created')
+      setShowAddAffiliateModal(false)
+      setNewAffiliateAccountType('individual')
+      setNewAffiliateFirstName('')
+      setNewAffiliateLastName('')
+      setNewAffiliateEmail('')
+      setNewAffiliateCompanyName('')
+      setNewAffiliateJobTitle('')
+      setNewAffiliateStatus('pending')
+      setNewAffiliatePaymentTerm('monthly')
+      setNewAffiliateRateType('percent')
+      setNewAffiliateRateValue('')
+      setNewAffiliateCurrency('USD')
+      setNewAffiliateNotes('')
+      setNewAffiliatePassword('')
+      setShowAffiliatePassword(false)
+      setNewAffiliatePhoneCountry(phoneCountries[0])
+      setNewAffiliatePhoneNumber('')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create affiliate')
+    },
+  })
+
   const deleteAffiliateMutation = useMutation({
     mutationFn: async (id: string) => {
       return api.delete(`/admin/affiliates/${id}`)
@@ -648,6 +778,34 @@ export default function AdminPage() {
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to update referral')
+    },
+  })
+
+  const createReferralMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return api.post('/referrals/admin', data)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-referrals'] })
+      toast.success('Referral created')
+      setShowAddReferralModal(false)
+      setNewReferralAffiliateId('')
+      setNewReferralType('individual')
+      setNewReferralCompanyName('')
+      setNewReferralFirstName('')
+      setNewReferralLastName('')
+      setNewReferralEmail('')
+      setNewReferralPhoneCountry(phoneCountries[0])
+      setNewReferralPhoneNumber('')
+      setNewReferralContractStart('')
+      setNewReferralContractEnd('')
+      setNewReferralWorkCountry('')
+      setNewReferralNationality('')
+      setNewReferralMaritalStatus('')
+      setNewReferralNotes('')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create referral')
     },
   })
 
@@ -1040,7 +1198,11 @@ export default function AdminPage() {
     visibleColumns.notes
 
   const hasReferralExtraColumns =
-    visibleReferralColumns.email || visibleReferralColumns.phone || visibleReferralColumns.notes
+    visibleReferralColumns.email ||
+    visibleReferralColumns.phone ||
+    visibleReferralColumns.referralType ||
+    visibleReferralColumns.companyName ||
+    visibleReferralColumns.notes
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -1157,6 +1319,13 @@ export default function AdminPage() {
               <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <h2 className="text-2xl font-bold text-gray-900">Affiliates</h2>
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddAffiliateModal(true)}
+                    className="inline-flex items-center gap-2 rounded-md bg-[#2b36ff] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#2330f0]"
+                  >
+                    Add an Affiliate
+                  </button>
                   <div className="relative" ref={affiliateFilterRef}>
                     <button
                       type="button"
@@ -1180,13 +1349,13 @@ export default function AdminPage() {
                       <div className="absolute right-0 z-10 mt-2 w-64 rounded-md border border-gray-200 bg-white p-4 shadow-lg">
                         <p className="text-sm font-medium text-gray-700 mb-2">Additional fields</p>
                         <div className="grid grid-cols-1 gap-2">
-                          {[
-                            { key: 'email', label: 'User email' },
-                            { key: 'phone', label: 'Phone number' },
-                            { key: 'accountType', label: 'Registration type' },
-                            { key: 'companyName', label: 'Company name' },
-                            { key: 'notes', label: 'Notes' },
-                          ].map((field) => (
+                        {[
+                          { key: 'email', label: 'Affiliate Email' },
+                          { key: 'phone', label: 'Phone Number' },
+                          { key: 'accountType', label: 'Account Type' },
+                          { key: 'companyName', label: 'Company Name' },
+                          { key: 'notes', label: 'Notes' },
+                        ].map((field) => (
                             <label key={field.key} className="flex items-center gap-2 text-sm text-gray-600">
                               <input
                                 type="checkbox"
@@ -1546,6 +1715,13 @@ export default function AdminPage() {
               <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <h2 className="text-2xl font-bold text-gray-900">Referrals</h2>
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddReferralModal(true)}
+                    className="inline-flex items-center gap-2 rounded-md bg-[#2b36ff] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#2330f0]"
+                  >
+                    Add a Referral
+                  </button>
                   <div className="relative" ref={referralFilterRef}>
                     <button
                       type="button"
@@ -1569,11 +1745,13 @@ export default function AdminPage() {
                       <div className="absolute right-0 z-10 mt-2 w-64 rounded-md border border-gray-200 bg-white p-4 shadow-lg">
                         <p className="text-sm font-medium text-gray-700 mb-2">Additional fields</p>
                         <div className="grid grid-cols-1 gap-2">
-                          {[
-                            { key: 'email', label: 'Referral email' },
-                            { key: 'phone', label: 'Telephone number' },
-                            { key: 'notes', label: 'Notes' },
-                          ].map((field) => (
+                        {[
+                          { key: 'referralType', label: 'Referral Type' },
+                          { key: 'email', label: 'Referral Email' },
+                          { key: 'phone', label: 'Phone Number' },
+                          { key: 'companyName', label: 'Company Name' },
+                          { key: 'notes', label: 'Notes' },
+                        ].map((field) => (
                             <label key={field.key} className="flex items-center gap-2 text-sm text-gray-600">
                               <input
                                 type="checkbox"
@@ -1595,7 +1773,13 @@ export default function AdminPage() {
                             type="button"
                             className="rounded-md border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:border-gray-300"
                             onClick={() => {
-                              const cleared = { email: false, phone: false, notes: false }
+                              const cleared = {
+                                email: false,
+                                phone: false,
+                                referralType: false,
+                                companyName: false,
+                                notes: false,
+                              }
                               setDraftVisibleReferralColumns(cleared)
                               setVisibleReferralColumns(cleared)
                               if (typeof window !== 'undefined') {
@@ -1686,11 +1870,17 @@ export default function AdminPage() {
                           <th className="px-4 py-3 text-left font-semibold">Status</th>
                           <th className="px-4 py-3 text-left font-semibold">Affiliate</th>
                           <th className="px-4 py-3 text-left font-semibold">Payment Status</th>
+                          {visibleReferralColumns.referralType && (
+                            <th className="px-4 py-3 text-left font-semibold">Referral Type</th>
+                          )}
                           {visibleReferralColumns.email && (
                             <th className="px-4 py-3 text-left font-semibold">Referral Email</th>
                           )}
                           {visibleReferralColumns.phone && (
-                            <th className="px-4 py-3 text-left font-semibold">Telephone</th>
+                            <th className="px-4 py-3 text-left font-semibold">Phone Number</th>
+                          )}
+                          {visibleReferralColumns.companyName && (
+                            <th className="px-4 py-3 text-left font-semibold">Company Name</th>
                           )}
                           {visibleReferralColumns.notes && (
                             <th className="px-4 py-3 text-left font-semibold">Notes</th>
@@ -1752,11 +1942,19 @@ export default function AdminPage() {
                                   ))}
                                 </select>
                               </td>
+                              {visibleReferralColumns.referralType && (
+                                <td className="px-4 py-3">
+                                  {referral.accountType === 'company' ? 'Company' : 'Individual'}
+                                </td>
+                              )}
                               {visibleReferralColumns.email && (
                                 <td className="px-4 py-3">{getReferralEmail(referral) || '-'}</td>
                               )}
                               {visibleReferralColumns.phone && (
                                 <td className="px-4 py-3">{getReferralPhone(referral) || '-'}</td>
+                              )}
+                              {visibleReferralColumns.companyName && (
+                                <td className="px-4 py-3">{referral.companyName || '-'}</td>
                               )}
                               {visibleReferralColumns.notes && (
                                 <td className="px-4 py-3">
@@ -2023,7 +2221,7 @@ export default function AdminPage() {
                                       <path d="M4 14a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v2H4v-2Z" />
                                     </svg>
                                   </a>
-                                  <div className="relative" ref={documentShareRef}>
+                                  <div className="relative" data-share-root>
                                     <button
                                       type="button"
                                       title="Share"
@@ -2725,6 +2923,467 @@ export default function AdminPage() {
                       enabled: true,
                       variables: availableTags,
                     },
+                  })
+                }}
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showAddAffiliateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Add an Affiliate</h3>
+              <button
+                className="text-gray-500 hover:text-gray-700"
+                onClick={() => setShowAddAffiliateModal(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Account Type</label>
+                <select
+                  value={newAffiliateAccountType}
+                  onChange={(event) =>
+                    setNewAffiliateAccountType(event.target.value as 'individual' | 'company')
+                  }
+                  className="mt-2 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900"
+                >
+                  <option value="individual">Individual</option>
+                  <option value="company">Company</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Status</label>
+                <select
+                  value={newAffiliateStatus}
+                  onChange={(event) =>
+                    setNewAffiliateStatus(event.target.value as 'pending' | 'active' | 'rejected')
+                  }
+                  className="mt-2 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900"
+                >
+                  <option value="pending">Pending</option>
+                  <option value="active">Active</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">First Name *</label>
+                <input
+                  value={newAffiliateFirstName}
+                  onChange={(event) => setNewAffiliateFirstName(event.target.value)}
+                  className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Last Name *</label>
+                <input
+                  value={newAffiliateLastName}
+                  onChange={(event) => setNewAffiliateLastName(event.target.value)}
+                  className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700">Email *</label>
+                <input
+                  type="email"
+                  value={newAffiliateEmail}
+                  onChange={(event) => setNewAffiliateEmail(event.target.value)}
+                  className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700">Phone *</label>
+                <PhoneCountrySelect
+                  country={newAffiliatePhoneCountry}
+                  onCountryChange={setNewAffiliatePhoneCountry}
+                  number={newAffiliatePhoneNumber}
+                  onNumberChange={setNewAffiliatePhoneNumber}
+                  placeholder="Phone number"
+                  compact
+                />
+              </div>
+              {newAffiliateAccountType === 'company' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Company Name *</label>
+                    <input
+                      value={newAffiliateCompanyName}
+                      onChange={(event) => setNewAffiliateCompanyName(event.target.value)}
+                      className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Job Title</label>
+                    <input
+                      value={newAffiliateJobTitle}
+                      onChange={(event) => setNewAffiliateJobTitle(event.target.value)}
+                      className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                    />
+                  </div>
+                </>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Payment Term</label>
+                <select
+                  value={newAffiliatePaymentTerm}
+                  onChange={(event) =>
+                    setNewAffiliatePaymentTerm(
+                      event.target.value as 'weekly' | 'monthly' | 'quarterly' | 'yearly'
+                    )
+                  }
+                  className="mt-2 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900"
+                >
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="quarterly">Quarterly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Rate Type</label>
+                <select
+                  value={newAffiliateRateType}
+                  onChange={(event) => setNewAffiliateRateType(event.target.value as 'percent' | 'fixed')}
+                  className="mt-2 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900"
+                >
+                  <option value="percent">Percent</option>
+                  <option value="fixed">Fixed Rate</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Rate</label>
+                <input
+                  value={newAffiliateRateValue}
+                  onChange={(event) => setNewAffiliateRateValue(event.target.value)}
+                  className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Currency</label>
+                <select
+                  value={newAffiliateCurrency}
+                  onChange={(event) => setNewAffiliateCurrency(event.target.value)}
+                  className="mt-2 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900"
+                >
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                  <option value="GBP">GBP</option>
+                  <option value="RUB">RUB</option>
+                </select>
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700">Notes</label>
+                <textarea
+                  value={newAffiliateNotes}
+                  onChange={(event) => setNewAffiliateNotes(event.target.value)}
+                  rows={3}
+                  className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700">Set Password *</label>
+                <div className="mt-2 flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type={showAffiliatePassword ? 'text' : 'password'}
+                      value={newAffiliatePassword}
+                      onChange={(event) => setNewAffiliatePassword(event.target.value)}
+                      className="w-full rounded-md border border-gray-200 px-3 py-2 pr-10 text-sm text-gray-900"
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      onClick={() => setShowAffiliatePassword((prev) => !prev)}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.5">
+                        <path d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12s-3.5 6.5-9.5 6.5S2.5 12 2.5 12Z" />
+                        <circle cx="12" cy="12" r="3.5" />
+                      </svg>
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    className="rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-700"
+                    onClick={() => {
+                      const generated = generatePassword()
+                      setNewAffiliatePassword(generated)
+                      setShowAffiliatePassword(true)
+                    }}
+                  >
+                    Generate
+                  </button>
+                </div>
+                {newAffiliatePasswordStrength && (
+                  <p
+                    className={`mt-2 text-xs font-medium ${
+                      newAffiliatePasswordStrength === 'Strong'
+                        ? 'text-green-600'
+                        : newAffiliatePasswordStrength === 'Medium'
+                        ? 'text-yellow-600'
+                        : 'text-red-600'
+                    }`}
+                  >
+                    Strength: {newAffiliatePasswordStrength}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                className="rounded-md border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700"
+                onClick={() => setShowAddAffiliateModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="rounded-md bg-[#2b36ff] px-4 py-2 text-sm font-semibold text-white"
+                onClick={() => {
+                  if (!newAffiliateFirstName || !newAffiliateLastName || !newAffiliateEmail) {
+                    toast.error('Please fill in all required fields')
+                    return
+                  }
+                  if (newAffiliateAccountType === 'company' && !newAffiliateCompanyName) {
+                    toast.error('Company name is required for company accounts')
+                    return
+                  }
+                  if (!newAffiliatePassword || newAffiliatePassword.length < 8) {
+                    toast.error('Password must be at least 8 characters')
+                    return
+                  }
+                  const trimmedPhone = newAffiliatePhoneNumber.trim()
+                  if (!trimmedPhone) {
+                    toast.error('Phone number is required')
+                    return
+                  }
+                  const parsedRate = Number(newAffiliateRateValue)
+                  if (Number.isNaN(parsedRate)) {
+                    toast.error('Rate is required')
+                    return
+                  }
+                  createAffiliateMutation.mutate({
+                    accountType: newAffiliateAccountType,
+                    firstName: newAffiliateFirstName,
+                    lastName: newAffiliateLastName,
+                    email: newAffiliateEmail,
+                    phone: `${newAffiliatePhoneCountry.dial} ${trimmedPhone}`,
+                    companyName:
+                      newAffiliateAccountType === 'company' ? newAffiliateCompanyName : undefined,
+                    jobTitle: newAffiliateAccountType === 'company' ? newAffiliateJobTitle : undefined,
+                    status: newAffiliateStatus,
+                    paymentTerm: newAffiliatePaymentTerm,
+                    rateType: newAffiliateRateType,
+                    rateValue: parsedRate,
+                    currency: newAffiliateCurrency,
+                    internalNotes: newAffiliateNotes,
+                    password: newAffiliatePassword,
+                  })
+                }}
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showAddReferralModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Add a Referral</h3>
+              <button
+                className="text-gray-500 hover:text-gray-700"
+                onClick={() => setShowAddReferralModal(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700">Choose Affiliate *</label>
+                <select
+                  value={newReferralAffiliateId}
+                  onChange={(event) => setNewReferralAffiliateId(event.target.value)}
+                  className="mt-2 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900"
+                >
+                  <option value="">Select affiliate</option>
+                  {affiliateOptions.map((affiliate: AffiliateRow) => (
+                    <option key={affiliate.id} value={affiliate.id}>
+                      {affiliate.firstName} {affiliate.lastName} ({affiliate.user?.email || 'no email'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Referral Type</label>
+                <select
+                  value={newReferralType}
+                  onChange={(event) => setNewReferralType(event.target.value as 'individual' | 'company')}
+                  className="mt-2 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900"
+                >
+                  <option value="individual">Individual</option>
+                  <option value="company">Company</option>
+                </select>
+              </div>
+              {newReferralType === 'company' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Company Name *</label>
+                  <input
+                    value={newReferralCompanyName}
+                    onChange={(event) => setNewReferralCompanyName(event.target.value)}
+                    className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                  />
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700">First Name *</label>
+                <input
+                  value={newReferralFirstName}
+                  onChange={(event) => setNewReferralFirstName(event.target.value)}
+                  className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Last Name *</label>
+                <input
+                  value={newReferralLastName}
+                  onChange={(event) => setNewReferralLastName(event.target.value)}
+                  className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700">Email *</label>
+                <input
+                  type="email"
+                  value={newReferralEmail}
+                  onChange={(event) => setNewReferralEmail(event.target.value)}
+                  className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700">Phone *</label>
+                <PhoneCountrySelect
+                  country={newReferralPhoneCountry}
+                  onCountryChange={setNewReferralPhoneCountry}
+                  number={newReferralPhoneNumber}
+                  onNumberChange={setNewReferralPhoneNumber}
+                  placeholder="Phone number"
+                  compact
+                />
+              </div>
+              <div className="md:col-span-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="relative">
+                  <input
+                    type="date"
+                    value={newReferralContractStart}
+                    onChange={(event) => setNewReferralContractStart(event.target.value)}
+                    className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-transparent caret-transparent"
+                  />
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">
+                    {newReferralContractStart
+                      ? formatDateDisplay(newReferralContractStart)
+                      : 'Contract Start Date'}
+                  </span>
+                </div>
+                <div className="relative">
+                  <input
+                    type="date"
+                    value={newReferralContractEnd}
+                    onChange={(event) => setNewReferralContractEnd(event.target.value)}
+                    className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-transparent caret-transparent"
+                  />
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">
+                    {newReferralContractEnd
+                      ? formatDateDisplay(newReferralContractEnd)
+                      : 'Contract End Date'}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Work Country</label>
+                <input
+                  value={newReferralWorkCountry}
+                  onChange={(event) => setNewReferralWorkCountry(event.target.value)}
+                  className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Nationality</label>
+                <input
+                  value={newReferralNationality}
+                  onChange={(event) => setNewReferralNationality(event.target.value)}
+                  className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Marital Status</label>
+                <select
+                  value={newReferralMaritalStatus}
+                  onChange={(event) => setNewReferralMaritalStatus(event.target.value)}
+                  className="mt-2 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900"
+                >
+                  <option value="">Select</option>
+                  <option value="Single">Single</option>
+                  <option value="Married">Married</option>
+                  <option value="Divorced">Divorced</option>
+                  <option value="Widowed">Widowed</option>
+                </select>
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700">Notes</label>
+                <textarea
+                  value={newReferralNotes}
+                  onChange={(event) => setNewReferralNotes(event.target.value)}
+                  rows={3}
+                  className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                className="rounded-md border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700"
+                onClick={() => setShowAddReferralModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="rounded-md bg-[#2b36ff] px-4 py-2 text-sm font-semibold text-white"
+                onClick={() => {
+                  if (!newReferralAffiliateId) {
+                    toast.error('Please select an affiliate')
+                    return
+                  }
+                  if (!newReferralFirstName || !newReferralLastName || !newReferralEmail) {
+                    toast.error('Please fill in all required fields')
+                    return
+                  }
+                  if (newReferralType === 'company' && !newReferralCompanyName) {
+                    toast.error('Company name is required for company referrals')
+                    return
+                  }
+                  const trimmedPhone = newReferralPhoneNumber.trim()
+                  if (!trimmedPhone) {
+                    toast.error('Phone number is required')
+                    return
+                  }
+                  createReferralMutation.mutate({
+                    affiliateId: newReferralAffiliateId,
+                    accountType: newReferralType,
+                    companyName: newReferralType === 'company' ? newReferralCompanyName : undefined,
+                    firstName: newReferralFirstName,
+                    lastName: newReferralLastName,
+                    email: newReferralEmail,
+                    phone: `${newReferralPhoneCountry.dial} ${trimmedPhone}`,
+                    contractDuration: newReferralContractDuration || undefined,
+                    workCountry: newReferralWorkCountry || undefined,
+                    nationality: newReferralNationality || undefined,
+                    maritalStatus: newReferralMaritalStatus || undefined,
+                    notes: newReferralNotes || undefined,
                   })
                 }}
               >

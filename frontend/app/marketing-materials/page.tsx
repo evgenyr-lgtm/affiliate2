@@ -50,7 +50,9 @@ const buildShareLinks = (url: string) => ({
   Telegram: `https://t.me/share/url?url=${encodeURIComponent(url)}`,
   WhatsApp: `https://wa.me/?text=${encodeURIComponent(url)}`,
   LinkedIn: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`,
-  Email: `mailto:?subject=${encodeURIComponent('Marketing Materials')}&body=${encodeURIComponent(url)}`,
+  Email: `mailto:?subject=${encodeURIComponent('Marketing Materials')}&body=${encodeURIComponent(
+    `Download link: ${url}`
+  )}`,
   Facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
 })
 
@@ -65,6 +67,18 @@ export default function MarketingMaterialsPage() {
       router.push('/login')
     }
   }, [router])
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!openShareId) return
+      const target = event.target as HTMLElement
+      if (target.closest('[data-share-root]')) return
+      setOpenShareId(null)
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openShareId])
 
   const { data: dashboardData } = useQuery({
     queryKey: ['dashboard'],
@@ -226,7 +240,7 @@ export default function MarketingMaterialsPage() {
                             </a>
                           </td>
                           <td className="px-4 py-3">
-                            <div className="relative">
+                            <div className="relative" data-share-root>
                               <button
                                 onClick={() =>
                                   setOpenShareId((prev) => (prev === doc.id ? null : doc.id))

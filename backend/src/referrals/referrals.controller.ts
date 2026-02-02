@@ -14,6 +14,7 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ReferralsService } from './referrals.service';
 import { CreateManualReferralDto } from './dto/create-manual-referral.dto';
+import { CreateAdminReferralDto } from './dto/create-admin-referral.dto';
 import { UpdateReferralDto } from './dto/update-referral.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -46,6 +47,15 @@ export class ReferralsController {
   ) {
     const cookieSlug = req.cookies?.affiliate_slug;
     return this.referralsService.createReferralFromLink(dto, affiliateSlug, cookieSlug);
+  }
+
+  @Post('admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.MARKETING_ADMIN, UserRole.SALES_ADMIN, UserRole.SYSTEM_ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create manual referral entry (admin)' })
+  async createManualReferralAdmin(@Body() dto: CreateAdminReferralDto) {
+    return this.referralsService.createManualReferralForAffiliateId(dto, dto.affiliateId);
   }
 
   @Get()

@@ -54,6 +54,13 @@ const formatDate = (value?: string) => {
   return new Intl.DateTimeFormat('en-GB').format(date)
 }
 
+const formatDateDisplay = (value?: string) => {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return new Intl.DateTimeFormat('en-GB').format(date)
+}
+
 const labelFrom = (value: string) =>
   value ? value.charAt(0).toUpperCase() + value.slice(1) : '-'
 
@@ -603,13 +610,11 @@ export default function DashboardPage() {
                             type="date"
                             value={contractStart}
                             onChange={(event) => setContractStart(event.target.value)}
-                            className="w-full rounded-full border border-gray-200 px-4 py-3 pr-10 text-sm text-gray-900"
+                            className="w-full rounded-full border border-gray-200 px-4 py-3 pr-10 text-sm text-transparent caret-transparent"
                           />
-                          {!contractStart && (
-                            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">
-                              Contract Start Date
-                            </span>
-                          )}
+                          <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-500">
+                            {contractStart ? formatDateDisplay(contractStart) : 'Contract Start Date'}
+                          </span>
                           <svg
                             className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
                             viewBox="0 0 20 20"
@@ -623,13 +628,11 @@ export default function DashboardPage() {
                             type="date"
                             value={contractEnd}
                             onChange={(event) => setContractEnd(event.target.value)}
-                            className="w-full rounded-full border border-gray-200 px-4 py-3 pr-10 text-sm text-gray-900"
+                            className="w-full rounded-full border border-gray-200 px-4 py-3 pr-10 text-sm text-transparent caret-transparent"
                           />
-                          {!contractEnd && (
-                            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">
-                              Contract End Date
-                            </span>
-                          )}
+                          <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-500">
+                            {contractEnd ? formatDateDisplay(contractEnd) : 'Contract End Date'}
+                          </span>
                           <svg
                             className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
                             viewBox="0 0 20 20"
@@ -826,9 +829,9 @@ export default function DashboardPage() {
                       <p className="text-sm font-medium text-gray-700 mb-2">Additional fields</p>
                       <div className="grid grid-cols-1 gap-2">
                       {[
-                        { key: 'email', label: 'Referral email' },
-                        { key: 'phone', label: 'Phone number' },
-                        { key: 'companyName', label: 'Company name' },
+                        { key: 'email', label: 'Referral Email' },
+                        { key: 'phone', label: 'Phone Number' },
+                        { key: 'companyName', label: 'Company Name' },
                       ].map((field) => (
                           <label key={field.key} className="flex items-center gap-2 text-sm text-gray-600">
                             <input

@@ -1,6 +1,7 @@
 import { Controller, Get, Put, Post, Body, Param, Query, UseGuards, Request, Delete, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
+import { CreateAffiliateDto } from './dto/create-affiliate.dto';
 import { UpdateCommissionDto } from './dto/update-commission.dto';
 import { UpdateAffiliateAdminDto } from './dto/update-affiliate-admin.dto';
 import { UpdateAdminProfileDto } from './dto/update-admin-profile.dto';
@@ -63,6 +64,12 @@ export class AdminController {
     @Body() dto: UpdateAffiliateAdminDto,
   ) {
     return this.adminService.updateAffiliate(id, dto);
+  }
+
+  @Post('affiliates')
+  @ApiOperation({ summary: 'Create affiliate (admin)' })
+  async createAffiliate(@Body() dto: CreateAffiliateDto) {
+    return this.adminService.createAffiliateManually(dto);
   }
 
   @Post('affiliates/:id/reset-password')
