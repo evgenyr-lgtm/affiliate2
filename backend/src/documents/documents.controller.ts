@@ -25,6 +25,20 @@ const getBucketName = () => {
 const buildPublicUrl = (bucket: string, objectName: string) =>
   `https://storage.googleapis.com/${bucket}/${objectName}`;
 
+const getMimeType = (filename: string) => {
+  const ext = filename.split('.').pop()?.toLowerCase();
+  if (ext === 'pdf') return 'application/pdf';
+  if (ext === 'doc') return 'application/msword';
+  if (ext === 'docx')
+    return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  if (ext === 'xls') return 'application/vnd.ms-excel';
+  if (ext === 'xlsx')
+    return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  if (ext === 'png') return 'image/png';
+  if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg';
+  return 'application/octet-stream';
+};
+
 const parseGcsUrl = (url: string) => {
   if (!url.startsWith('gcs://')) return null;
   const trimmed = url.replace('gcs://', '');
@@ -69,6 +83,7 @@ export class DocumentsController {
     }
 
     if (doc.fileUrl.startsWith('http://') || doc.fileUrl.startsWith('https://')) {
+      res.setHeader('Content-Disposition', `attachment; filename="${doc.name}"`);
       return res.redirect(doc.fileUrl);
     }
 
@@ -76,6 +91,8 @@ export class DocumentsController {
     if (gcsInfo) {
       const storage = new Storage();
       const file = storage.bucket(gcsInfo.bucket).file(gcsInfo.objectName);
+      res.setHeader('Content-Type', getMimeType(doc.name));
+      res.setHeader('Content-Disposition', `attachment; filename="${doc.name}"`);
       const stream = file.createReadStream();
       stream.on('error', () => {
         res.status(404).json({ message: 'File not found' });
@@ -94,6 +111,8 @@ export class DocumentsController {
         const file = storage.bucket(bucket).file(objectName);
         const [exists] = await file.exists();
         if (exists) {
+          res.setHeader('Content-Type', getMimeType(doc.name));
+          res.setHeader('Content-Disposition', `attachment; filename="${doc.name}"`);
           const stream = file.createReadStream();
           stream.on('error', () => {
             res.status(404).json({ message: 'File not found' });
@@ -104,6 +123,8 @@ export class DocumentsController {
       }
       return res.status(404).json({ message: 'File not found' });
     }
+    res.setHeader('Content-Type', getMimeType(doc.name));
+    res.setHeader('Content-Disposition', `attachment; filename="${doc.name}"`);
     return createReadStream(filePath).pipe(res);
   }
 

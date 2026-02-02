@@ -4,6 +4,15 @@ import { Storage } from '@google-cloud/storage';
 import { createReadStream, existsSync } from 'fs';
 import { join } from 'path';
 
+const getMimeType = (filename: string) => {
+  const ext = filename.split('.').pop()?.toLowerCase();
+  if (ext === 'png') return 'image/png';
+  if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg';
+  if (ext === 'gif') return 'image/gif';
+  if (ext === 'webp') return 'image/webp';
+  return 'application/octet-stream';
+};
+
 const getBucketName = () => {
   if (process.env.GCS_BUCKET) return process.env.GCS_BUCKET;
   if (process.env.FIREBASE_STORAGE_BUCKET) return process.env.FIREBASE_STORAGE_BUCKET;
@@ -15,6 +24,7 @@ const getBucketName = () => {
 export class UploadsController {
   @Get(':filename')
   async getAvatar(@Param('filename') filename: string, @Res() res: Response) {
+    res.setHeader('Content-Type', getMimeType(filename));
     const localPath = join(process.cwd(), 'uploads', 'avatars', filename);
     if (existsSync(localPath)) {
       return createReadStream(localPath).pipe(res);
