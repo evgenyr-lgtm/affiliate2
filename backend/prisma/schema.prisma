@@ -112,6 +112,7 @@ model Affiliate {
   status        AffiliateStatus @default(pending)
   rateType      RateType        @default(percent)
   rateValue     Float           @default(0)
+  totalEarnings Float           @default(0)
   paymentTerm   PaymentTerm     @default(monthly)
   currency      String          @default("USD")
   notifySystem  Boolean         @default(true)

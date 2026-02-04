@@ -42,6 +42,7 @@ type AffiliateData = {
   avatar?: string
   rateType?: 'percent' | 'fixed'
   rateValue?: number
+  totalEarnings?: number
   paymentTerm?: 'weekly' | 'monthly' | 'quarterly' | 'yearly'
   currency?: string
 }
@@ -108,12 +109,14 @@ export default function DashboardPage() {
     phone: false,
     companyName: false,
     jobTitle: false,
+    totalEarnings: true,
   })
   const [draftVisibleColumns, setDraftVisibleColumns] = useState({
     email: false,
     phone: false,
     companyName: false,
     jobTitle: false,
+    totalEarnings: true,
   })
   const [referralForm, setReferralForm] = useState({
     firstName: '',
@@ -186,6 +189,7 @@ export default function DashboardPage() {
           phone: false,
           companyName: false,
           jobTitle: false,
+          totalEarnings: true,
           ...parsed,
         }
         setVisibleColumns(next)
@@ -824,6 +828,7 @@ export default function DashboardPage() {
                         { key: 'phone', label: 'Phone Number' },
                         { key: 'companyName', label: 'Company Name' },
                         { key: 'jobTitle', label: 'Job Title' },
+                        { key: 'totalEarnings', label: 'Total Earnings' },
                       ].map((field) => (
                           <label key={field.key} className="flex items-center gap-2 text-sm text-gray-600">
                             <input
@@ -851,6 +856,7 @@ export default function DashboardPage() {
                             phone: false,
                             companyName: false,
                             jobTitle: false,
+                            totalEarnings: false,
                           }
                           setDraftVisibleColumns(cleared)
                           setVisibleColumns(cleared)
@@ -920,6 +926,9 @@ export default function DashboardPage() {
                       <th className="px-4 py-3 text-left font-semibold">Payment Term</th>
                       <th className="px-4 py-3 text-left font-semibold">Rate Type</th>
                       <th className="px-4 py-3 text-left font-semibold">Rate</th>
+                      {visibleColumns.totalEarnings && (
+                        <th className="px-4 py-3 text-left font-semibold">Total Earnings</th>
+                      )}
                       <th className="px-4 py-3 text-left font-semibold">Currency</th>
                       <th className="px-4 py-3 text-left font-semibold">Payment Status</th>
                       <th className="px-4 py-3 text-left font-semibold">Date of Registration</th>
@@ -946,6 +955,11 @@ export default function DashboardPage() {
                         <td className="px-4 py-3">{labelFrom(affiliateData.paymentTerm || '')}</td>
                         <td className="px-4 py-3">{labelFrom(affiliateData.rateType || '')}</td>
                         <td className="px-4 py-3">{affiliateData.rateValue ?? 0}</td>
+                        {visibleColumns.totalEarnings && (
+                          <td className="px-4 py-3">
+                            {affiliateData.currency || 'USD'} {affiliateData.totalEarnings ?? 0}
+                          </td>
+                        )}
                         <td className="px-4 py-3">{affiliateData.currency || 'USD'}</td>
                         <td className="px-4 py-3">{labelFrom(referral.paymentStatus)}</td>
                         <td className="px-4 py-3">{formatDate(referral.entryDate)}</td>

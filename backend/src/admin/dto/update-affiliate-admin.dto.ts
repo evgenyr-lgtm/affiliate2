@@ -24,6 +24,12 @@ export class UpdateAffiliateAdminDto {
   @IsOptional()
   rateValue?: number;
 
+  @ApiPropertyOptional()
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  totalEarnings?: number;
+
   @ApiPropertyOptional({ example: 'USD' })
   @IsString()
   @Matches(/^[A-Z]{3}$/)

@@ -62,6 +62,7 @@ export class AffiliatesService {
         jobTitle: affiliate.jobTitle,
         rateType: affiliate.rateType,
         rateValue: affiliate.rateValue,
+        totalEarnings: affiliate.totalEarnings,
         paymentTerm: affiliate.paymentTerm,
         currency: affiliate.currency,
         notifySystem: affiliate.notifySystem,

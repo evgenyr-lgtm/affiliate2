@@ -27,6 +27,7 @@ type AffiliateRow = {
   paymentTerm: 'weekly' | 'monthly' | 'quarterly' | 'yearly'
   rateType: 'percent' | 'fixed'
   rateValue: number
+  totalEarnings?: number
   currency?: string
   createdAt: string
   user?: {
@@ -367,6 +368,19 @@ export default function AdminPage() {
   const [newTemplateSubject, setNewTemplateSubject] = useState('')
   const [newTemplateBody, setNewTemplateBody] = useState('')
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(false)
+  const [smtpServer, setSmtpServer] = useState('smtp.gmail.com')
+  const [smtpPort, setSmtpPort] = useState('465')
+  const [smtpUsername, setSmtpUsername] = useState('')
+  const [smtpPassword, setSmtpPassword] = useState('')
+  const [smtpFromName, setSmtpFromName] = useState('')
+  const [smtpFromEmail, setSmtpFromEmail] = useState('')
+  const [smtpUseTls, setSmtpUseTls] = useState(true)
+  const [recaptchaVersion, setRecaptchaVersion] = useState<'v2' | 'v3'>('v2')
+  const [recaptchaSiteKey, setRecaptchaSiteKey] = useState('')
+  const [recaptchaSecretKey, setRecaptchaSecretKey] = useState('')
+  const [recaptchaScoreThreshold, setRecaptchaScoreThreshold] = useState('0.40')
+  const [recaptchaLoginEnabled, setRecaptchaLoginEnabled] = useState(false)
+  const [recaptchaRegisterEnabled, setRecaptchaRegisterEnabled] = useState(true)
   const [templatesSeeded, setTemplatesSeeded] = useState(false)
   const [templateDrafts, setTemplateDrafts] = useState<Record<string, any>>({})
   const [visibleColumns, setVisibleColumns] = useState({
@@ -375,6 +389,7 @@ export default function AdminPage() {
     accountType: false,
     companyName: false,
     jobTitle: false,
+    totalEarnings: true,
     notes: false,
   })
   const [draftVisibleColumns, setDraftVisibleColumns] = useState({
@@ -383,6 +398,7 @@ export default function AdminPage() {
     accountType: false,
     companyName: false,
     jobTitle: false,
+    totalEarnings: true,
     notes: false,
   })
   const [drafts, setDrafts] = useState<Record<string, any>>({})
@@ -537,6 +553,7 @@ export default function AdminPage() {
           accountType: false,
           companyName: false,
           jobTitle: false,
+          totalEarnings: true,
           notes: false,
           ...parsed,
         }
@@ -642,6 +659,7 @@ export default function AdminPage() {
         paymentTerm: affiliate.paymentTerm,
         rateType: affiliate.rateType,
         rateValue: affiliate.rateValue,
+        totalEarnings: affiliate.totalEarnings ?? 0,
         currency: affiliate.currency || 'USD',
       }
     })
@@ -690,6 +708,8 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!settingsData) return
+    const getSettingValue = (key: string) =>
+      settingsData.find((setting: any) => setting.key === key)?.value
     const emailsSetting = settingsData.find((setting: any) => setting.key === 'manager_notification_emails')
     if (emailsSetting?.value) {
       try {
@@ -707,7 +727,34 @@ export default function AdminPage() {
     }
     const maintenanceSetting = settingsData.find((setting: any) => setting.key === 'maintenance_mode')
     setMaintenanceEnabled(maintenanceSetting?.value === 'true')
+    const smtpServerValue = getSettingValue('smtp_server') || 'smtp.gmail.com'
+    const smtpPortValue = getSettingValue('smtp_port') || '465'
+    const smtpUsernameValue = getSettingValue('smtp_username') || ''
+    const smtpPasswordValue = getSettingValue('smtp_password') || ''
+    const smtpFromNameValue = getSettingValue('smtp_from_name') || ''
+    const smtpFromEmailValue = getSettingValue('smtp_from_email') || smtpUsernameValue
+    const smtpUseTlsValue = getSettingValue('smtp_use_tls')
+    setSmtpServer(smtpServerValue)
+    setSmtpPort(smtpPortValue)
+    setSmtpUsername(smtpUsernameValue)
+    setSmtpPassword(smtpPasswordValue)
+    setSmtpFromName(smtpFromNameValue)
+    setSmtpFromEmail(smtpFromEmailValue)
+    setSmtpUseTls(smtpUseTlsValue !== 'false')
+    const recaptchaVersionValue = getSettingValue('recaptcha_version')
+    setRecaptchaVersion(recaptchaVersionValue === 'v3' ? 'v3' : 'v2')
+    setRecaptchaSiteKey(getSettingValue('recaptcha_site_key') || '')
+    setRecaptchaSecretKey(getSettingValue('recaptcha_secret_key') || '')
+    setRecaptchaScoreThreshold(getSettingValue('recaptcha_score_threshold') || '0.40')
+    setRecaptchaLoginEnabled(getSettingValue('recaptcha_login_enabled') === 'true')
+    setRecaptchaRegisterEnabled(getSettingValue('recaptcha_register_enabled') !== 'false')
   }, [settingsData])
+
+  useEffect(() => {
+    if (!smtpFromEmail) {
+      setSmtpFromEmail(smtpUsername)
+    }
+  }, [smtpFromEmail, smtpUsername])
 
   const resetPasswordStrength = resetAffiliatePassword
     ? getPasswordStrength(resetAffiliatePassword)
@@ -936,6 +983,44 @@ export default function AdminPage() {
     },
   })
 
+  const saveSmtpSettingsMutation = useMutation({
+    mutationFn: async (data: Record<string, string>) => {
+      await Promise.all(
+        Object.entries(data).map(([key, value]) =>
+          api.put(`/settings/${key}`, {
+            value,
+          })
+        )
+      )
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-settings'] })
+      toast.success('SMTP settings saved')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to save SMTP settings')
+    },
+  })
+
+  const saveRecaptchaSettingsMutation = useMutation({
+    mutationFn: async (data: Record<string, string>) => {
+      await Promise.all(
+        Object.entries(data).map(([key, value]) =>
+          api.put(`/settings/${key}`, {
+            value,
+          })
+        )
+      )
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-settings'] })
+      toast.success('reCAPTCHA settings saved')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to save reCAPTCHA settings')
+    },
+  })
+
   const updateTemplateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any; silent?: boolean }) => {
       return api.put(`/email-templates/${id}`, data)
@@ -1132,6 +1217,7 @@ export default function AdminPage() {
       'Payment Term': labelFrom(affiliate.paymentTerm, paymentTermOptions),
       'Rate Type': labelFrom(affiliate.rateType, rateTypeOptions),
       Rate: affiliate.rateValue ?? 0,
+      'Total Earnings': affiliate.totalEarnings ?? 0,
       Currency: affiliate.currency || 'USD',
       Email: affiliate.user?.email || '',
       Phone: affiliate.phone || '',
@@ -1232,6 +1318,7 @@ export default function AdminPage() {
     visibleColumns.accountType ||
     visibleColumns.companyName ||
     visibleColumns.jobTitle ||
+    visibleColumns.totalEarnings ||
     visibleColumns.notes
 
   const hasReferralExtraColumns =
@@ -1401,6 +1488,7 @@ export default function AdminPage() {
                           { key: 'accountType', label: 'Account Type' },
                           { key: 'companyName', label: 'Company Name' },
                           { key: 'jobTitle', label: 'Job Title' },
+                          { key: 'totalEarnings', label: 'Total Earnings' },
                           { key: 'notes', label: 'Notes' },
                         ].map((field) => (
                             <label key={field.key} className="flex items-center gap-2 text-sm text-gray-600">
@@ -1430,6 +1518,7 @@ export default function AdminPage() {
                                 accountType: false,
                                 companyName: false,
                                 jobTitle: false,
+                                totalEarnings: false,
                                 notes: false,
                               }
                               setDraftVisibleColumns(cleared)
@@ -1524,6 +1613,9 @@ export default function AdminPage() {
                           <th className="px-4 py-3 text-left font-semibold">Payment Term</th>
                           <th className="px-4 py-3 text-left font-semibold">Rate Type</th>
                           <th className="px-4 py-3 text-left font-semibold">Rate</th>
+                          {visibleColumns.totalEarnings && (
+                            <th className="px-4 py-3 text-left font-semibold">Total Earnings</th>
+                          )}
                           <th className="px-4 py-3 text-left font-semibold">Currency</th>
                           {visibleColumns.email && (
                             <th className="px-4 py-3 text-left font-semibold">Email</th>
@@ -1627,6 +1719,23 @@ export default function AdminPage() {
                                   className="w-24 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm disabled:bg-gray-50"
                                 />
                               </td>
+                              {visibleColumns.totalEarnings && (
+                                <td className="px-4 py-3">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={draft.totalEarnings ?? affiliate.totalEarnings ?? 0}
+                                    disabled={!isEditing}
+                                    onChange={(event) =>
+                                      handleDraftChange(affiliate.id, {
+                                        totalEarnings: Number(event.target.value || 0),
+                                      })
+                                    }
+                                    className="w-28 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm disabled:bg-gray-50"
+                                  />
+                                </td>
+                              )}
                               <td className="px-4 py-3">
                                 <select
                                   value={draft.currency || affiliate.currency || 'USD'}
@@ -2727,6 +2836,189 @@ export default function AdminPage() {
                     </div>
                   </div>
                 )}
+              </section>
+
+              <section className="bg-white shadow rounded-lg p-6 space-y-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">SMTP Settings</h2>
+                  <p className="text-sm text-gray-500">Configure outbound email delivery.</p>
+                </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">SMTP Server</label>
+                    <input
+                      value={smtpServer}
+                      onChange={(event) => setSmtpServer(event.target.value)}
+                      className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                      placeholder="smtp.gmail.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Port</label>
+                    <input
+                      value={smtpPort}
+                      onChange={(event) => setSmtpPort(event.target.value)}
+                      className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                      placeholder="465"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Username / Email</label>
+                    <input
+                      value={smtpUsername}
+                      onChange={(event) => setSmtpUsername(event.target.value)}
+                      className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Password / App Password</label>
+                    <input
+                      type="password"
+                      value={smtpPassword}
+                      onChange={(event) => setSmtpPassword(event.target.value)}
+                      className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">From Name</label>
+                    <input
+                      value={smtpFromName}
+                      onChange={(event) => setSmtpFromName(event.target.value)}
+                      className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">From Email</label>
+                    <input
+                      value={smtpFromEmail}
+                      onChange={(event) => setSmtpFromEmail(event.target.value)}
+                      className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={smtpUseTls}
+                      onChange={(event) => setSmtpUseTls(event.target.checked)}
+                    />
+                    Use TLS (secure)
+                  </label>
+                </div>
+                <button
+                  className="rounded-md bg-[#2b36ff] px-4 py-2 text-sm font-semibold text-white"
+                  onClick={() =>
+                    saveSmtpSettingsMutation.mutate({
+                      smtp_server: smtpServer || 'smtp.gmail.com',
+                      smtp_port: smtpPort || '465',
+                      smtp_username: smtpUsername,
+                      smtp_password: smtpPassword,
+                      smtp_from_name: smtpFromName,
+                      smtp_from_email: smtpFromEmail || smtpUsername,
+                      smtp_use_tls: smtpUseTls ? 'true' : 'false',
+                    })
+                  }
+                >
+                  Save Changes
+                </button>
+              </section>
+
+              <section className="bg-white shadow rounded-lg p-6 space-y-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">reCAPTCHA Settings</h2>
+                  <p className="text-sm text-gray-500">Configure bot protection for the portal.</p>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">reCAPTCHA Version</label>
+                    <div className="flex flex-wrap gap-4 text-sm text-gray-700">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="recaptcha-version"
+                          value="v2"
+                          checked={recaptchaVersion === 'v2'}
+                          onChange={() => setRecaptchaVersion('v2')}
+                        />
+                        reCAPTCHA v2 (“I am not a robot” checkbox)
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="recaptcha-version"
+                          value="v3"
+                          checked={recaptchaVersion === 'v3'}
+                          onChange={() => setRecaptchaVersion('v3')}
+                        />
+                        reCAPTCHA v3 (invisible)
+                      </label>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">reCAPTCHA Site Key</label>
+                      <input
+                        value={recaptchaSiteKey}
+                        onChange={(event) => setRecaptchaSiteKey(event.target.value)}
+                        className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">reCAPTCHA Secret Key</label>
+                      <input
+                        value={recaptchaSecretKey}
+                        onChange={(event) => setRecaptchaSecretKey(event.target.value)}
+                        className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                      />
+                    </div>
+                  </div>
+                  {recaptchaVersion === 'v3' && (
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700">reCAPTCHA Score Threshold</label>
+                      <input
+                        value={recaptchaScoreThreshold}
+                        onChange={(event) => setRecaptchaScoreThreshold(event.target.value)}
+                        className="w-40 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                      />
+                      <p className="text-xs text-gray-500">
+                        reCAPTCHA v3 returns a score (1.0 is very likely a good interaction, 0.0 is very likely a bot). If
+                        the score is less than or equal to this threshold, the affiliate registration will be blocked.
+                      </p>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-6 text-sm text-gray-700">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={recaptchaLoginEnabled}
+                        onChange={(event) => setRecaptchaLoginEnabled(event.target.checked)}
+                      />
+                      Add CAPTCHA to Login form
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={recaptchaRegisterEnabled}
+                        onChange={(event) => setRecaptchaRegisterEnabled(event.target.checked)}
+                      />
+                      Add CAPTCHA to Register form
+                    </label>
+                  </div>
+                </div>
+                <button
+                  className="rounded-md bg-[#2b36ff] px-4 py-2 text-sm font-semibold text-white"
+                  onClick={() =>
+                    saveRecaptchaSettingsMutation.mutate({
+                      recaptcha_version: recaptchaVersion,
+                      recaptcha_site_key: recaptchaSiteKey,
+                      recaptcha_secret_key: recaptchaSecretKey,
+                      recaptcha_score_threshold: recaptchaScoreThreshold || '0.40',
+                      recaptcha_login_enabled: recaptchaLoginEnabled ? 'true' : 'false',
+                      recaptcha_register_enabled: recaptchaRegisterEnabled ? 'true' : 'false',
+                    })
+                  }
+                >
+                  Save Changes
+                </button>
               </section>
 
               <section className="bg-white shadow rounded-lg p-6 space-y-4">
