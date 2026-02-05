@@ -3,8 +3,8 @@ const path = require('path')
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  output: process.env.FIREBASE_APP_HOSTING ? 'standalone' : undefined,
-  // Firebase App Hosting handles output mode via buildpacks
+  output: 'standalone',
+  // Firebase App Hosting requires standalone output
   images: {
     unoptimized: false, // Enable image optimization for App Hosting
     remotePatterns: [
