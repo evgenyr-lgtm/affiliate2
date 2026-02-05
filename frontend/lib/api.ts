@@ -1,5 +1,6 @@
 import axios from 'axios'
 import Cookies from 'js-cookie'
+import { clearAuthCookies, setAuthCookies } from '@/lib/authCookies'
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api',
@@ -18,6 +19,21 @@ api.interceptors.request.use((config) => {
 })
 
 // Response interceptor to handle token refresh
+let refreshPromise: Promise<string | null> | null = null
+
+const refreshAccessToken = async () => {
+  const refreshToken = Cookies.get('refreshToken')
+  if (!refreshToken) return null
+  const response = await axios.post(
+    `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'}/auth/refresh`,
+    { refreshToken }
+  )
+  const { accessToken, refreshToken: newRefreshToken } = response.data
+  setAuthCookies(accessToken, newRefreshToken)
+  api.defaults.headers.common.Authorization = `Bearer ${accessToken}`
+  return accessToken
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -27,26 +43,20 @@ api.interceptors.response.use(
       originalRequest._retry = true
 
       try {
-        const refreshToken = Cookies.get('refreshToken')
-        if (refreshToken) {
-          const response = await axios.post(
-            `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'}/auth/refresh`,
-            { refreshToken }
-          )
-
-          const { accessToken, refreshToken: newRefreshToken } = response.data
-          Cookies.set('accessToken', accessToken)
-          if (newRefreshToken) {
-            Cookies.set('refreshToken', newRefreshToken)
-          }
-
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`
-          return api(originalRequest)
+        if (!refreshPromise) {
+          refreshPromise = refreshAccessToken().finally(() => {
+            refreshPromise = null
+          })
         }
+        const accessToken = await refreshPromise
+        if (!accessToken) {
+          throw new Error('Missing refresh token')
+        }
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`
+        return api(originalRequest)
       } catch (refreshError) {
         // Refresh failed, redirect to login
-        Cookies.remove('accessToken')
-        Cookies.remove('refreshToken')
+        clearAuthCookies()
         window.location.href = '/login'
         return Promise.reject(refreshError)
       }

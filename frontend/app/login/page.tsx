@@ -7,7 +7,7 @@ import Image from 'next/image'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import api from '@/lib/api'
-import Cookies from 'js-cookie'
+import { setAuthCookies } from '@/lib/authCookies'
 import toast from 'react-hot-toast'
 
 const loginSchema = z.object({
@@ -35,8 +35,7 @@ export default function LoginPage() {
       const response = await api.post('/auth/login', data)
       const { accessToken, refreshToken, user } = response.data
 
-      Cookies.set('accessToken', accessToken)
-      Cookies.set('refreshToken', refreshToken)
+      setAuthCookies(accessToken, refreshToken)
 
       // Redirect based on role
       if (user.role === 'AFFILIATE') {

@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import api from '@/lib/api'
 import toast from 'react-hot-toast'
-import Cookies from 'js-cookie'
+import { setAuthCookies } from '@/lib/authCookies'
 import { phoneCountries } from '@/lib/phoneCountries'
 import PhoneCountrySelect from '@/components/PhoneCountrySelect'
 
@@ -126,8 +126,7 @@ export default function RegisterPage() {
       })
       const { accessToken, refreshToken, user } = response.data
 
-      Cookies.set('accessToken', accessToken)
-      Cookies.set('refreshToken', refreshToken)
+      setAuthCookies(accessToken, refreshToken)
 
       toast.success('Registration successful! Welcome to your account.')
       if (user?.role === 'AFFILIATE') {

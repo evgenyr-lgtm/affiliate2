@@ -1,3 +1,5 @@
+const path = require('path')
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -17,6 +19,10 @@ const nextConfig = {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000',
   },
   trailingSlash: true,
+  experimental: {
+    // Ensure standalone tracing includes hoisted deps in monorepo
+    outputFileTracingRoot: path.join(__dirname, '..'),
+  },
 }
 
 module.exports = nextConfig
