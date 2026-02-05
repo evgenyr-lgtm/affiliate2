@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { EmailTemplatesService } from './email-templates.service';
 import { CreateEmailTemplateDto } from './dto/create-email-template.dto';
 import { UpdateEmailTemplateDto } from './dto/update-email-template.dto';
+import { SendTestEmailDto } from './dto/send-test-email.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -38,5 +39,11 @@ export class EmailTemplatesController {
   @ApiOperation({ summary: 'Delete email template' })
   async delete(@Param('id') id: string) {
     return this.emailTemplatesService.delete(id);
+  }
+
+  @Post(':id/send-test')
+  @ApiOperation({ summary: 'Send test email for a template' })
+  async sendTest(@Param('id') id: string, @Body() dto: SendTestEmailDto) {
+    return this.emailTemplatesService.sendTestEmail(id, dto);
   }
 }

@@ -200,33 +200,48 @@ const templateGroups = {
       name: 'New Affiliate Registration',
       group: 'manager' as const,
       description: 'Sent to a manager when a new affiliate registers.',
-      subject: 'A new affiliate has registered on your site | {first_name}{last_name}',
-      body:
-        'A new affiliate has registered on your site, https://accessfinancial.com\n\n' +
-        'Account Type: {account_type}\n\n' +
-        'First Name: {first_name}\n' +
-        'Last Name: {last_name}\n' +
-        'Phone: {phone}\n' +
-        'Email: {user_email}\n' +
-        'Company: {company_name}\n' +
-        'Country: {country}\n\n' +
-        'Kind regards,\n' +
-        'Access Financial Team',
+      subject:
+        'AF Affiliate Portal | New Affiliate Registration | {affiliate_name} | {account_type} | {date_of_registration}',
+      body: `<h2>New Affiliate Registration</h2>
+<p>Details:</p>
+<ul>
+  <li>Account Type: {account_type}</li>
+  <li>Full Name: {affiliate_name}</li>
+  <li>Company Name: {company_name}</li>
+  <li>Country: {country}</li>
+  <li>Job Title: {job_title}</li>
+  <li>Email: {affiliate_email}</li>
+  <li>Phone Number: {phone_number}</li>
+  <li>Date of Registration: {date_of_registration}</li>
+</ul>`,
     },
     {
       name: 'New Referral',
       group: 'manager' as const,
       description: 'Sent to a manager when a new referral is created.',
-      subject: 'A new referral has been created | {first_name}{last_name}',
-      body:
-        'A new referral has been created on your site, https://accessfinancial.com\n\n' +
-        'Referral Name: {first_name} {last_name}\n' +
-        'Email: {user_email}\n' +
-        'Phone: {phone}\n' +
-        'Company: {company_name}\n' +
-        'Country: {country}\n\n' +
-        'Kind regards,\n' +
-        'Access Financial Team',
+      subject:
+        'AF Affiliate Portal | New Referral Registration | From {affiliate_name} | {date_of_registration}',
+      body: `<h2>New Referral Registration</h2>
+<p>Details:</p>
+<ul>
+  <li>Affiliate Name: {affiliate_name}</li>
+  <li>Account Type: {account_type}</li>
+  <li>Full Name: {referral_name}</li>
+  <li>Company Name: {company_name}</li>
+  <li>Country: {country}</li>
+  <li>Job Title: {job_title}</li>
+  <li>Email: {referral_email}</li>
+  <li>Phone Number: {phone_number}</li>
+</ul>
+
+<p>Contract Details:</p>
+<ul>
+  <li>Nationality: {nationality}</li>
+  <li>Work Country: {work_country}</li>
+  <li>Contract Period: {contract_start_date} - {contract_end_date}</li>
+  <li>Marital Status: {marital_status}</li>
+  <li>Date of Registration: {date_of_registration}</li>
+</ul>`,
     },
   ],
   affiliate: [
@@ -289,13 +304,24 @@ const templateGroups = {
 }
 
 const availableTags = [
-  '{first_name}',
-  '{last_name}',
-  '{account_type}',
-  '{phone}',
-  '{user_email}',
-  '{company_name}',
-  '{country}',
+  { label: 'Account Type', token: '{account_type}' },
+  { label: 'Affiliate Name', token: '{affiliate_name}' },
+  { label: 'Referral Name', token: '{referral_name}' },
+  { label: 'Affiliate Email', token: '{affiliate_email}' },
+  { label: 'Referral Email', token: '{referral_email}' },
+  { label: 'Work Country', token: '{work_country}' },
+  { label: 'Nationality', token: '{nationality}' },
+  { label: 'Contract Start Date', token: '{contract_start_date}' },
+  { label: 'Contract End Date', token: '{contract_end_date}' },
+  { label: 'Marital Status', token: '{marital_status}' },
+  { label: 'Phone Number', token: '{phone_number}' },
+  { label: 'Company Name', token: '{company_name}' },
+  { label: 'Country', token: '{country}' },
+  { label: 'Job Title', token: '{job_title}' },
+  { label: 'Total Earnings', token: '{total_earnings}' },
+  { label: 'Payment Status', token: '{payment_status}' },
+  { label: 'Status', token: '{registration_status}' },
+  { label: 'Date of Registration', token: '{date_of_registration}' },
 ]
 
 const labelFrom = (value: string, options: { value: string; label: string }[]) =>
@@ -360,7 +386,6 @@ export default function AdminPage() {
     '',
   ])
   const [templatesExpanded, setTemplatesExpanded] = useState<Record<string, boolean>>({})
-  const [previewTemplate, setPreviewTemplate] = useState<EmailTemplateRow | null>(null)
   const [showNewTemplateModal, setShowNewTemplateModal] = useState(false)
   const [newTemplateGroup, setNewTemplateGroup] = useState<'manager' | 'affiliate'>('affiliate')
   const [newTemplateName, setNewTemplateName] = useState('')
@@ -491,6 +516,19 @@ export default function AdminPage() {
       ...prev,
       [id]: !prev[id],
     }))
+  }
+
+  const handleCopyTag = async (token: string) => {
+    try {
+      if (!navigator?.clipboard) {
+        toast.error('Clipboard access is not available')
+        return
+      }
+      await navigator.clipboard.writeText(token)
+      toast.success(`${token} copied`)
+    } catch {
+      toast.error('Failed to copy tag')
+    }
   }
 
   useEffect(() => {
@@ -1033,6 +1071,28 @@ export default function AdminPage() {
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to update template')
+    },
+  })
+
+  const sendTestTemplateMutation = useMutation({
+    mutationFn: async ({
+      id,
+      to,
+      subject,
+      body,
+    }: {
+      id: string
+      to: string
+      subject: string
+      body: string
+    }) => {
+      return api.post(`/email-templates/${id}/send-test`, { to, subject, body })
+    },
+    onSuccess: () => {
+      toast.success('Test email sent')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to send test email')
     },
   })
 
@@ -2648,25 +2708,43 @@ export default function AdminPage() {
                                   rows={6}
                                   className="w-full rounded-md border border-gray-200 px-4 py-2 text-sm text-gray-900"
                                 />
-                                <div className="flex flex-wrap gap-2 text-xs text-gray-500">
-                                  {availableTags.map((tag) => (
-                                    <span key={tag} className="rounded-full bg-gray-100 px-2 py-1">
-                                      {tag}
-                                    </span>
-                                  ))}
+                                <div className="space-y-2">
+                                  <p className="text-xs font-semibold text-gray-500">Available tags (click to copy)</p>
+                                  <div className="flex flex-wrap gap-2 text-xs text-gray-500">
+                                    {availableTags.map((tag) => (
+                                      <button
+                                        key={tag.token}
+                                        type="button"
+                                        className="rounded-full bg-gray-100 px-2 py-1 text-gray-600 hover:bg-gray-200"
+                                        onClick={(event) => {
+                                          event.stopPropagation()
+                                          handleCopyTag(tag.token)
+                                        }}
+                                      >
+                                        <span className="font-semibold text-gray-700">{tag.label}</span>
+                                        <span className="ml-1 text-gray-500">{tag.token}</span>
+                                      </button>
+                                    ))}
+                                  </div>
                                 </div>
                                 <div className="flex items-center gap-3">
                                   <button
                                     className="rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-700"
-                                    onClick={() =>
-                                      setPreviewTemplate({
-                                        ...row,
+                                    onClick={() => {
+                                      const recipient = adminProfile?.email || smtpFromEmail || smtpUsername
+                                      if (!recipient) {
+                                        toast.error('Add an email address to send a test message')
+                                        return
+                                      }
+                                      sendTestTemplateMutation.mutate({
+                                        id: row.id,
+                                        to: recipient,
                                         subject: draft.subject ?? row.subject,
                                         body: draft.body ?? row.body,
                                       })
-                                    }
+                                    }}
                                   >
-                                    Preview
+                                    Send a Test
                                   </button>
                                   <button
                                     className="rounded-md bg-[#2b36ff] px-3 py-2 text-sm font-semibold text-white"
@@ -2781,25 +2859,43 @@ export default function AdminPage() {
                                   rows={6}
                                   className="w-full rounded-md border border-gray-200 px-4 py-2 text-sm text-gray-900"
                                 />
-                                <div className="flex flex-wrap gap-2 text-xs text-gray-500">
-                                  {availableTags.map((tag) => (
-                                    <span key={tag} className="rounded-full bg-gray-100 px-2 py-1">
-                                      {tag}
-                                    </span>
-                                  ))}
+                                <div className="space-y-2">
+                                  <p className="text-xs font-semibold text-gray-500">Available tags (click to copy)</p>
+                                  <div className="flex flex-wrap gap-2 text-xs text-gray-500">
+                                    {availableTags.map((tag) => (
+                                      <button
+                                        key={tag.token}
+                                        type="button"
+                                        className="rounded-full bg-gray-100 px-2 py-1 text-gray-600 hover:bg-gray-200"
+                                        onClick={(event) => {
+                                          event.stopPropagation()
+                                          handleCopyTag(tag.token)
+                                        }}
+                                      >
+                                        <span className="font-semibold text-gray-700">{tag.label}</span>
+                                        <span className="ml-1 text-gray-500">{tag.token}</span>
+                                      </button>
+                                    ))}
+                                  </div>
                                 </div>
                                 <div className="flex items-center gap-3">
                                   <button
                                     className="rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-700"
-                                    onClick={() =>
-                                      setPreviewTemplate({
-                                        ...row,
+                                    onClick={() => {
+                                      const recipient = adminProfile?.email || smtpFromEmail || smtpUsername
+                                      if (!recipient) {
+                                        toast.error('Add an email address to send a test message')
+                                        return
+                                      }
+                                      sendTestTemplateMutation.mutate({
+                                        id: row.id,
+                                        to: recipient,
                                         subject: draft.subject ?? row.subject,
                                         body: draft.body ?? row.body,
                                       })
-                                    }
+                                    }}
                                   >
-                                    Preview
+                                    Send a Test
                                   </button>
                                   <button
                                     className="rounded-md bg-[#2b36ff] px-3 py-2 text-sm font-semibold text-white"
@@ -3242,42 +3338,6 @@ export default function AdminPage() {
               <p><span className="font-semibold">Marital Status:</span> {selectedReferral.maritalStatus || '-'}</p>
               <p><span className="font-semibold">Date of Registration:</span> {formatDate(selectedReferral.entryDate)}</p>
               <p><span className="font-semibold">Notes:</span> {selectedReferral.notes || '-'}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {previewTemplate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Email Preview</h3>
-              <button
-                className="text-gray-500 hover:text-gray-700"
-                onClick={() => setPreviewTemplate(null)}
-              >
-                ×
-              </button>
-            </div>
-            <div className="mt-4 space-y-3">
-              <div>
-                <p className="text-xs font-semibold text-gray-500">Subject</p>
-                <p className="text-sm text-gray-900">{previewTemplate.subject}</p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-gray-500">Message</p>
-                <pre className="whitespace-pre-wrap rounded-md bg-gray-50 p-3 text-sm text-gray-800">
-                  {previewTemplate.body}
-                </pre>
-              </div>
-            </div>
-            <div className="mt-6 flex justify-end">
-              <button
-                className="rounded-md border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700"
-                onClick={() => setPreviewTemplate(null)}
-              >
-                Close
-              </button>
             </div>
           </div>
         </div>

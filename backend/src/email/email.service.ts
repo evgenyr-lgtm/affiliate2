@@ -1,19 +1,27 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { PrismaService } from '../prisma/prisma.service';
+import { EmailTemplate } from '@prisma/client';
 
 @Injectable()
 export class EmailService {
   private transporter?: nodemailer.Transporter;
-  private isEnabled = false;
+  private transporterKey?: string;
+  private smtpSettings?: {
+    host: string;
+    port: number;
+    username?: string;
+    password?: string;
+    fromEmail: string;
+    fromName?: string;
+    secure: boolean;
+  };
 
   constructor(
     private configService: ConfigService,
     private prisma: PrismaService,
   ) {
-    // SMTP disabled: keep registration and flows non-blocking.
-    this.isEnabled = false;
   }
 
   async sendVerificationEmail(email: string, token: string) {
@@ -74,8 +82,10 @@ export class EmailService {
       return;
     }
 
+    const affiliateName = `${affiliate.firstName} ${affiliate.lastName}`.trim();
+    const dateOfRegistration = this.formatDate(affiliate.createdAt);
     const body = this.replaceVariables(template.body, {
-      name: `${affiliate.firstName} ${affiliate.lastName}`,
+      name: affiliateName,
       first_name: affiliate.firstName,
       last_name: affiliate.lastName,
       user_email: affiliate.user?.email || 'N/A',
@@ -85,6 +95,13 @@ export class EmailService {
       company_name: affiliate.companyName || 'N/A',
       phone: affiliate.phone || 'N/A',
       country: 'N/A',
+      affiliate_name: affiliateName,
+      affiliate_email: affiliate.user?.email || 'N/A',
+      phone_number: affiliate.phone || 'N/A',
+      job_title: affiliate.jobTitle || 'N/A',
+      total_earnings: `${affiliate.totalEarnings ?? 0}`,
+      registration_status: affiliate.status || 'pending',
+      date_of_registration: dateOfRegistration || 'N/A',
     });
 
     return this.sendEmail({
@@ -163,21 +180,47 @@ export class EmailService {
       return;
     }
 
+    const referralRecord = await this.prisma.referral.findUnique({
+      where: { id: referral.id },
+      include: { affiliate: { include: { user: true } } },
+    });
+    const resolvedReferral = referralRecord || referral;
+
     const referralName =
-      referral.accountType === 'company'
-        ? `${referral.contactFirstName || ''} ${referral.contactLastName || ''}`.trim()
-        : `${referral.firstName || ''} ${referral.lastName || ''}`.trim();
+      resolvedReferral.accountType === 'company'
+        ? `${resolvedReferral.contactFirstName || ''} ${resolvedReferral.contactLastName || ''}`.trim()
+        : `${resolvedReferral.firstName || ''} ${resolvedReferral.lastName || ''}`.trim();
+    const contractParts = this.splitContractDuration(resolvedReferral.contractDuration);
+    const dateOfRegistration = this.formatDate(resolvedReferral.entryDate);
+    const affiliateName = `${resolvedReferral.affiliate?.firstName || ''} ${resolvedReferral.affiliate?.lastName || ''}`.trim();
 
     const body = this.replaceVariables(template.body, {
-      referral_url: `/admin/referrals/${referral.id}`,
-      affiliate_id: referral.affiliateId,
-      first_name: referral.firstName || referral.contactFirstName || '',
-      last_name: referral.lastName || referral.contactLastName || '',
-      user_email: referral.email || referral.contactEmail || '',
-      phone: referral.phone || referral.contactPhone || '',
-      company: referral.companyName || '',
-      country: referral.country || referral.workCountry || '',
+      referral_url: `/admin/referrals/${resolvedReferral.id}`,
+      affiliate_id: resolvedReferral.affiliateId,
+      first_name: resolvedReferral.firstName || resolvedReferral.contactFirstName || '',
+      last_name: resolvedReferral.lastName || resolvedReferral.contactLastName || '',
+      user_email: resolvedReferral.email || resolvedReferral.contactEmail || '',
+      phone: resolvedReferral.phone || resolvedReferral.contactPhone || '',
+      company: resolvedReferral.companyName || '',
+      country: resolvedReferral.country || resolvedReferral.workCountry || '',
       name: referralName,
+      account_type: resolvedReferral.accountType,
+      affiliate_name: affiliateName || 'N/A',
+      referral_name: referralName || 'N/A',
+      affiliate_email: resolvedReferral.affiliate?.user?.email || 'N/A',
+      referral_email: resolvedReferral.email || resolvedReferral.contactEmail || 'N/A',
+      work_country: resolvedReferral.workCountry || 'N/A',
+      nationality: resolvedReferral.nationality || 'N/A',
+      contract_start_date: contractParts.start || 'N/A',
+      contract_end_date: contractParts.end || 'N/A',
+      marital_status: resolvedReferral.maritalStatus || 'N/A',
+      phone_number: resolvedReferral.phone || resolvedReferral.contactPhone || 'N/A',
+      company_name: resolvedReferral.companyName || 'N/A',
+      job_title: resolvedReferral.jobTitle || 'N/A',
+      total_earnings: `${resolvedReferral.affiliate?.totalEarnings ?? 0}`,
+      payment_status: resolvedReferral.paymentStatus || 'unpaid',
+      registration_status: resolvedReferral.status || 'pending',
+      date_of_registration: dateOfRegistration || 'N/A',
     });
 
     return this.sendEmail({
@@ -206,18 +249,38 @@ export class EmailService {
     });
   }
 
+  async sendTestTemplateEmail(template: EmailTemplate, to: string, overrides?: { subject?: string; body?: string }) {
+    const settings = await this.ensureTransporter(true);
+    const variables = this.buildSampleVariables();
+    const subject = this.replaceVariables(overrides?.subject ?? template.subject, variables);
+    const body = this.replaceVariables(overrides?.body ?? template.body, variables);
+
+    return this.sendEmail({
+      to,
+      subject,
+      html: body,
+      requireTransporter: true,
+      from: settings.fromEmail,
+      fromName: settings.fromName,
+    });
+  }
+
   private async sendEmail(options: {
     to: string | string[];
     subject: string;
     html: string;
+    requireTransporter?: boolean;
+    from?: string;
+    fromName?: string;
   }) {
-    if (!this.isEnabled || !this.transporter) {
-      return;
-    }
+    const settings = await this.ensureTransporter(options.requireTransporter);
+    if (!settings) return;
 
     try {
-      const from = this.configService.get<string>('SMTP_FROM') || 'noreply@accessfinancial.com';
-      
+      const fromEmail = options.from || settings.fromEmail;
+      const fromName = options.fromName || settings.fromName;
+      const from = fromName ? `"${fromName}" <${fromEmail}>` : fromEmail;
+
       await this.transporter.sendMail({
         from,
         to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
@@ -260,5 +323,119 @@ export class EmailService {
       result = result.replace(new RegExp(`\\{${key.replace('_', '')}\\}`, 'g'), value);
     }
     return result;
+  }
+
+  private buildSampleVariables(): Record<string, string> {
+    const today = this.formatDate(new Date()) || '2026-01-23';
+    return {
+      account_type: 'individual',
+      affiliate_name: 'Alex Morgan',
+      referral_name: 'Jamie Taylor',
+      affiliate_email: 'affiliate@example.com',
+      referral_email: 'referral@example.com',
+      work_country: 'United Kingdom',
+      nationality: 'British',
+      contract_start_date: today,
+      contract_end_date: today,
+      marital_status: 'single',
+      phone_number: '+44 20 1234 5678',
+      company_name: 'Example Ltd',
+      country: 'United Kingdom',
+      job_title: 'Account Manager',
+      total_earnings: '1250',
+      payment_status: 'unpaid',
+      registration_status: 'pending',
+      date_of_registration: today,
+    };
+  }
+
+  private splitContractDuration(value?: string) {
+    if (!value) {
+      return { start: '', end: '' };
+    }
+    const [start, end] = value.split(' - ');
+    return {
+      start: (start || '').trim(),
+      end: (end || '').trim(),
+    };
+  }
+
+  private formatDate(value?: Date | string) {
+    if (!value) return '';
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return new Intl.DateTimeFormat('en-GB').format(date);
+  }
+
+  private async ensureTransporter(requireTransporter?: boolean) {
+    const settings = await this.loadSmtpSettings();
+    if (!settings) {
+      if (requireTransporter) {
+        throw new BadRequestException('SMTP settings are not configured.');
+      }
+      return null;
+    }
+
+    const key = JSON.stringify(settings);
+    if (!this.transporter || this.transporterKey !== key) {
+      this.transporter = nodemailer.createTransport({
+        host: settings.host,
+        port: settings.port,
+        secure: settings.secure,
+        auth: settings.username
+          ? {
+              user: settings.username,
+              pass: settings.password || '',
+            }
+          : undefined,
+      });
+      this.transporterKey = key;
+      this.smtpSettings = settings;
+    }
+
+    return settings;
+  }
+
+  private async loadSmtpSettings() {
+    const keys = [
+      'smtp_server',
+      'smtp_port',
+      'smtp_username',
+      'smtp_password',
+      'smtp_from_name',
+      'smtp_from_email',
+      'smtp_use_tls',
+    ];
+    const settings = await this.prisma.setting.findMany({
+      where: { key: { in: keys } },
+    });
+    const lookup = new Map(settings.map((setting) => [setting.key, setting.value]));
+    const host = lookup.get('smtp_server')?.trim();
+    const portValue = lookup.get('smtp_port')?.trim();
+    const username = lookup.get('smtp_username')?.trim();
+    const password = lookup.get('smtp_password')?.trim();
+    const fromName = lookup.get('smtp_from_name')?.trim();
+    const fromEmail = lookup.get('smtp_from_email')?.trim() || username;
+    const useTlsValue = lookup.get('smtp_use_tls');
+
+    if (!host || !portValue || !fromEmail) {
+      return null;
+    }
+
+    const port = Number(portValue);
+    if (!Number.isFinite(port) || port <= 0) {
+      return null;
+    }
+
+    const useTls = useTlsValue ? useTlsValue !== 'false' : port === 465;
+    return {
+      host,
+      port,
+      username: username || undefined,
+      password: password || undefined,
+      fromEmail,
+      fromName: fromName || undefined,
+      secure: useTls,
+    };
   }
 }
