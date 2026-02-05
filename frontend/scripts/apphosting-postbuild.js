@@ -8,6 +8,8 @@ const routesSource = path.join(root, '.next', 'routes-manifest.json');
 const routesDestination = path.join(standaloneRoot, 'routes-manifest.json');
 const middlewareSource = path.join(root, '.next', 'server', 'middleware-manifest.json');
 const middlewareDestination = path.join(standaloneRoot, 'server', 'middleware-manifest.json');
+const buildIdSource = path.join(root, '.next', 'BUILD_ID');
+const buildIdDestination = path.join(standaloneRoot, 'BUILD_ID');
 
 try {
   const nestedServer = path.join(standaloneBase, 'frontend', 'server.js');
@@ -32,6 +34,14 @@ try {
     console.log('apphosting-postbuild: copied middleware-manifest.json into standalone bundle.');
   } else {
     console.warn('apphosting-postbuild: middleware-manifest.json not found, skipping.');
+  }
+
+  if (fs.existsSync(buildIdSource)) {
+    fs.mkdirSync(standaloneRoot, { recursive: true });
+    fs.copyFileSync(buildIdSource, buildIdDestination);
+    console.log('apphosting-postbuild: copied BUILD_ID into standalone bundle.');
+  } else {
+    console.warn('apphosting-postbuild: BUILD_ID not found, skipping.');
   }
 } catch (error) {
   console.error('apphosting-postbuild: failed to copy routes-manifest.json:', error);
