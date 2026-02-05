@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && node scripts/apphosting-postbuild.js",
     "start": "next start",
     "lint": "next lint",
     "deploy": "npm run build && firebase deploy --only hosting:af-affiliate-portal-b831d"
