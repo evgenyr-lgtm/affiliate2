@@ -10,6 +10,8 @@ const middlewareSource = path.join(root, '.next', 'server', 'middleware-manifest
 const middlewareDestination = path.join(standaloneRoot, 'server', 'middleware-manifest.json');
 const buildIdSource = path.join(root, '.next', 'BUILD_ID');
 const buildIdDestination = path.join(standaloneRoot, 'BUILD_ID');
+const prerenderSource = path.join(root, '.next', 'prerender-manifest.json');
+const prerenderDestination = path.join(standaloneRoot, 'prerender-manifest.json');
 
 try {
   const nestedServer = path.join(standaloneBase, 'frontend', 'server.js');
@@ -42,6 +44,14 @@ try {
     console.log('apphosting-postbuild: copied BUILD_ID into standalone bundle.');
   } else {
     console.warn('apphosting-postbuild: BUILD_ID not found, skipping.');
+  }
+
+  if (fs.existsSync(prerenderSource)) {
+    fs.mkdirSync(standaloneRoot, { recursive: true });
+    fs.copyFileSync(prerenderSource, prerenderDestination);
+    console.log('apphosting-postbuild: copied prerender-manifest.json into standalone bundle.');
+  } else {
+    console.warn('apphosting-postbuild: prerender-manifest.json not found, skipping.');
   }
 } catch (error) {
   console.error('apphosting-postbuild: failed to copy routes-manifest.json:', error);
