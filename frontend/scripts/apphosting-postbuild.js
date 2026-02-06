@@ -12,6 +12,8 @@ const buildIdSource = path.join(root, '.next', 'BUILD_ID');
 const buildIdDestination = path.join(standaloneRoot, 'BUILD_ID');
 const prerenderSource = path.join(root, '.next', 'prerender-manifest.json');
 const prerenderDestination = path.join(standaloneRoot, 'prerender-manifest.json');
+const pagesManifestSource = path.join(root, '.next', 'server', 'pages-manifest.json');
+const pagesManifestDestination = path.join(standaloneRoot, 'server', 'pages-manifest.json');
 
 try {
   const nestedServer = path.join(standaloneBase, 'frontend', 'server.js');
@@ -52,6 +54,14 @@ try {
     console.log('apphosting-postbuild: copied prerender-manifest.json into standalone bundle.');
   } else {
     console.warn('apphosting-postbuild: prerender-manifest.json not found, skipping.');
+  }
+
+  if (fs.existsSync(pagesManifestSource)) {
+    fs.mkdirSync(path.dirname(pagesManifestDestination), { recursive: true });
+    fs.copyFileSync(pagesManifestSource, pagesManifestDestination);
+    console.log('apphosting-postbuild: copied pages-manifest.json into standalone bundle.');
+  } else {
+    console.warn('apphosting-postbuild: pages-manifest.json not found, skipping.');
   }
 } catch (error) {
   console.error('apphosting-postbuild: failed to copy routes-manifest.json:', error);
