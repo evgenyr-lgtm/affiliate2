@@ -27,6 +27,19 @@ const serverChunksDestination = path.join(standaloneRoot, 'server', 'chunks');
 const buildManifestSource = path.join(root, '.next', 'build-manifest.json');
 const buildManifestDestination = path.join(standaloneRoot, 'build-manifest.json');
 
+const copyDir = (src, dest) => {
+  fs.mkdirSync(dest, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      copyDir(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+};
+
 try {
   const nestedServer = path.join(standaloneBase, 'frontend', 'server.js');
   const rootServer = path.join(standaloneBase, 'server.js');
@@ -97,18 +110,6 @@ try {
     if (fs.cpSync) {
       fs.cpSync(pagesDirSource, pagesDirDestination, { recursive: true });
     } else {
-      const copyDir = (src, dest) => {
-        fs.mkdirSync(dest, { recursive: true });
-        for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-          const srcPath = path.join(src, entry.name);
-          const destPath = path.join(dest, entry.name);
-          if (entry.isDirectory()) {
-            copyDir(srcPath, destPath);
-          } else {
-            fs.copyFileSync(srcPath, destPath);
-          }
-        }
-      };
       copyDir(pagesDirSource, pagesDirDestination);
     }
     console.log('apphosting-postbuild: copied pages directory into standalone bundle.');
@@ -129,18 +130,6 @@ try {
     if (fs.cpSync) {
       fs.cpSync(serverChunksSource, serverChunksDestination, { recursive: true });
     } else {
-      const copyDir = (src, dest) => {
-        fs.mkdirSync(dest, { recursive: true });
-        for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-          const srcPath = path.join(src, entry.name);
-          const destPath = path.join(dest, entry.name);
-          if (entry.isDirectory()) {
-            copyDir(srcPath, destPath);
-          } else {
-            fs.copyFileSync(srcPath, destPath);
-          }
-        }
-      };
       copyDir(serverChunksSource, serverChunksDestination);
     }
     console.log('apphosting-postbuild: copied server chunks into standalone bundle.');
