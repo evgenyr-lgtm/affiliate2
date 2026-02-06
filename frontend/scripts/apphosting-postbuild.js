@@ -14,6 +14,8 @@ const prerenderSource = path.join(root, '.next', 'prerender-manifest.json');
 const prerenderDestination = path.join(standaloneRoot, 'prerender-manifest.json');
 const pagesManifestSource = path.join(root, '.next', 'server', 'pages-manifest.json');
 const pagesManifestDestination = path.join(standaloneRoot, 'server', 'pages-manifest.json');
+const nextFontManifestSource = path.join(root, '.next', 'server', 'next-font-manifest.json');
+const nextFontManifestDestination = path.join(standaloneRoot, 'server', 'next-font-manifest.json');
 
 try {
   const nestedServer = path.join(standaloneBase, 'frontend', 'server.js');
@@ -62,6 +64,14 @@ try {
     console.log('apphosting-postbuild: copied pages-manifest.json into standalone bundle.');
   } else {
     console.warn('apphosting-postbuild: pages-manifest.json not found, skipping.');
+  }
+
+  if (fs.existsSync(nextFontManifestSource)) {
+    fs.mkdirSync(path.dirname(nextFontManifestDestination), { recursive: true });
+    fs.copyFileSync(nextFontManifestSource, nextFontManifestDestination);
+    console.log('apphosting-postbuild: copied next-font-manifest.json into standalone bundle.');
+  } else {
+    console.warn('apphosting-postbuild: next-font-manifest.json not found, skipping.');
   }
 } catch (error) {
   console.error('apphosting-postbuild: failed to copy routes-manifest.json:', error);
