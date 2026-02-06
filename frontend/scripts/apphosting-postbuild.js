@@ -24,6 +24,8 @@ const webpackRuntimeSource = path.join(root, '.next', 'server', 'webpack-runtime
 const webpackRuntimeDestination = path.join(standaloneRoot, 'server', 'webpack-runtime.js');
 const serverChunksSource = path.join(root, '.next', 'server', 'chunks');
 const serverChunksDestination = path.join(standaloneRoot, 'server', 'chunks');
+const buildManifestSource = path.join(root, '.next', 'build-manifest.json');
+const buildManifestDestination = path.join(standaloneRoot, 'build-manifest.json');
 
 try {
   const nestedServer = path.join(standaloneBase, 'frontend', 'server.js');
@@ -144,6 +146,14 @@ try {
     console.log('apphosting-postbuild: copied server chunks into standalone bundle.');
   } else {
     console.warn('apphosting-postbuild: server chunks not found, skipping.');
+  }
+
+  if (fs.existsSync(buildManifestSource)) {
+    fs.mkdirSync(standaloneRoot, { recursive: true });
+    fs.copyFileSync(buildManifestSource, buildManifestDestination);
+    console.log('apphosting-postbuild: copied build-manifest.json into standalone bundle.');
+  } else {
+    console.warn('apphosting-postbuild: build-manifest.json not found, skipping.');
   }
 } catch (error) {
   console.error('apphosting-postbuild: failed to copy routes-manifest.json:', error);
