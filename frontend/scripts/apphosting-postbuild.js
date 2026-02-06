@@ -20,6 +20,8 @@ const fontManifestSource = path.join(root, '.next', 'server', 'font-manifest.jso
 const fontManifestDestination = path.join(standaloneRoot, 'server', 'font-manifest.json');
 const pagesDirSource = path.join(root, '.next', 'server', 'pages');
 const pagesDirDestination = path.join(standaloneRoot, 'server', 'pages');
+const webpackRuntimeSource = path.join(root, '.next', 'server', 'webpack-runtime.js');
+const webpackRuntimeDestination = path.join(standaloneRoot, 'server', 'webpack-runtime.js');
 
 try {
   const nestedServer = path.join(standaloneBase, 'frontend', 'server.js');
@@ -108,6 +110,14 @@ try {
     console.log('apphosting-postbuild: copied pages directory into standalone bundle.');
   } else {
     console.warn('apphosting-postbuild: pages directory not found, skipping.');
+  }
+
+  if (fs.existsSync(webpackRuntimeSource)) {
+    fs.mkdirSync(path.dirname(webpackRuntimeDestination), { recursive: true });
+    fs.copyFileSync(webpackRuntimeSource, webpackRuntimeDestination);
+    console.log('apphosting-postbuild: copied webpack-runtime.js into standalone bundle.');
+  } else {
+    console.warn('apphosting-postbuild: webpack-runtime.js not found, skipping.');
   }
 } catch (error) {
   console.error('apphosting-postbuild: failed to copy routes-manifest.json:', error);
