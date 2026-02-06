@@ -18,6 +18,8 @@ const nextFontManifestSource = path.join(root, '.next', 'server', 'next-font-man
 const nextFontManifestDestination = path.join(standaloneRoot, 'server', 'next-font-manifest.json');
 const fontManifestSource = path.join(root, '.next', 'server', 'font-manifest.json');
 const fontManifestDestination = path.join(standaloneRoot, 'server', 'font-manifest.json');
+const pagesDirSource = path.join(root, '.next', 'server', 'pages');
+const pagesDirDestination = path.join(standaloneRoot, 'server', 'pages');
 
 try {
   const nestedServer = path.join(standaloneBase, 'frontend', 'server.js');
@@ -82,6 +84,30 @@ try {
     console.log('apphosting-postbuild: copied font-manifest.json into standalone bundle.');
   } else {
     console.warn('apphosting-postbuild: font-manifest.json not found, skipping.');
+  }
+
+  if (fs.existsSync(pagesDirSource)) {
+    fs.mkdirSync(pagesDirDestination, { recursive: true });
+    if (fs.cpSync) {
+      fs.cpSync(pagesDirSource, pagesDirDestination, { recursive: true });
+    } else {
+      const copyDir = (src, dest) => {
+        fs.mkdirSync(dest, { recursive: true });
+        for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+          const srcPath = path.join(src, entry.name);
+          const destPath = path.join(dest, entry.name);
+          if (entry.isDirectory()) {
+            copyDir(srcPath, destPath);
+          } else {
+            fs.copyFileSync(srcPath, destPath);
+          }
+        }
+      };
+      copyDir(pagesDirSource, pagesDirDestination);
+    }
+    console.log('apphosting-postbuild: copied pages directory into standalone bundle.');
+  } else {
+    console.warn('apphosting-postbuild: pages directory not found, skipping.');
   }
 } catch (error) {
   console.error('apphosting-postbuild: failed to copy routes-manifest.json:', error);
