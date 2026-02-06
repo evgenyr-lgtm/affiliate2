@@ -22,6 +22,8 @@ const pagesDirSource = path.join(root, '.next', 'server', 'pages');
 const pagesDirDestination = path.join(standaloneRoot, 'server', 'pages');
 const webpackRuntimeSource = path.join(root, '.next', 'server', 'webpack-runtime.js');
 const webpackRuntimeDestination = path.join(standaloneRoot, 'server', 'webpack-runtime.js');
+const serverChunksSource = path.join(root, '.next', 'server', 'chunks');
+const serverChunksDestination = path.join(standaloneRoot, 'server', 'chunks');
 
 try {
   const nestedServer = path.join(standaloneBase, 'frontend', 'server.js');
@@ -118,6 +120,30 @@ try {
     console.log('apphosting-postbuild: copied webpack-runtime.js into standalone bundle.');
   } else {
     console.warn('apphosting-postbuild: webpack-runtime.js not found, skipping.');
+  }
+
+  if (fs.existsSync(serverChunksSource)) {
+    fs.mkdirSync(serverChunksDestination, { recursive: true });
+    if (fs.cpSync) {
+      fs.cpSync(serverChunksSource, serverChunksDestination, { recursive: true });
+    } else {
+      const copyDir = (src, dest) => {
+        fs.mkdirSync(dest, { recursive: true });
+        for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+          const srcPath = path.join(src, entry.name);
+          const destPath = path.join(dest, entry.name);
+          if (entry.isDirectory()) {
+            copyDir(srcPath, destPath);
+          } else {
+            fs.copyFileSync(srcPath, destPath);
+          }
+        }
+      };
+      copyDir(serverChunksSource, serverChunksDestination);
+    }
+    console.log('apphosting-postbuild: copied server chunks into standalone bundle.');
+  } else {
+    console.warn('apphosting-postbuild: server chunks not found, skipping.');
   }
 } catch (error) {
   console.error('apphosting-postbuild: failed to copy routes-manifest.json:', error);
