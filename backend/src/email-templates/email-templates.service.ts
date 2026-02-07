@@ -19,6 +19,7 @@ export class EmailTemplatesService {
   }
 
   async create(dto: CreateEmailTemplateDto) {
+    const normalizedVariables = this.normalizeVariables(dto.variables);
     return this.prisma.emailTemplate.create({
       data: {
         name: dto.name,
@@ -27,15 +28,19 @@ export class EmailTemplatesService {
         subject: dto.subject,
         body: dto.body,
         enabled: dto.enabled ?? true,
-        variables: dto.variables ?? [],
+        variables: normalizedVariables ?? [],
       },
     });
   }
 
   async update(id: string, dto: UpdateEmailTemplateDto) {
+    const normalizedVariables = this.normalizeVariables(dto.variables);
     return this.prisma.emailTemplate.update({
       where: { id },
-      data: dto,
+      data: {
+        ...dto,
+        ...(normalizedVariables ? { variables: normalizedVariables } : {}),
+      },
     });
   }
 
@@ -59,5 +64,20 @@ export class EmailTemplatesService {
     });
 
     return { success: true };
+  }
+
+  private normalizeVariables(variables?: unknown): string[] | undefined {
+    if (!variables) return undefined;
+    if (!Array.isArray(variables)) return undefined;
+    return variables
+      .map((item) => {
+        if (typeof item === 'string') return item;
+        if (item && typeof item === 'object' && 'token' in item) {
+          const token = (item as { token?: string }).token;
+          return typeof token === 'string' ? token : undefined;
+        }
+        return undefined;
+      })
+      .filter((value): value is string => Boolean(value));
   }
 }

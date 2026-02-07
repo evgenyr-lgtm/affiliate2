@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import Image from 'next/image'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -19,7 +19,29 @@ type LoginForm = z.infer<typeof loginSchema>
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    const token = searchParams.get('token')
+    const verified = searchParams.get('verified')
+    if (token) {
+      api
+        .get(`/auth/verify-email?token=${token}`)
+        .then(() => {
+          toast.success('Email verified successfully!', { duration: 2000 })
+          router.replace('/login')
+        })
+        .catch(() => {
+          toast.error('Email verification failed')
+        })
+      return
+    }
+    if (verified === '1') {
+      toast.success('Email verified successfully!', { duration: 2000 })
+      router.replace('/login')
+    }
+  }, [searchParams, router])
 
   const {
     register,

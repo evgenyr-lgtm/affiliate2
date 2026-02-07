@@ -39,12 +39,18 @@ export class AuthService {
     const slug = await this.generateAffiliateSlug(registerDto);
 
     // Create user and affiliate
+    const verificationToken = uuidv4();
+    const verificationExpires = new Date();
+    verificationExpires.setHours(verificationExpires.getHours() + 24);
+
     const user = await this.prisma.user.create({
       data: {
         email: registerDto.email,
         password: hashedPassword,
         role: UserRole.AFFILIATE,
-        emailVerified: true,
+        emailVerified: false,
+        emailVerifyToken: verificationToken,
+        emailVerifyExpires: verificationExpires,
         affiliate: {
           create: {
             slug,
@@ -63,6 +69,8 @@ export class AuthService {
 
     // Send internal notification
     await this.emailService.sendNewAffiliateRegistration(user.affiliate!);
+    // Send verification email
+    await this.emailService.sendVerificationEmail(user.email, verificationToken);
 
     // TODO: Create Zoho Desk ticket
     // const zohoService = new ZohoService(this.configService);
@@ -93,13 +101,14 @@ export class AuthService {
         emailVerifyToken: token,
         emailVerifyExpires: { gt: new Date() },
       },
+      include: { affiliate: true },
     });
 
     if (!user) {
       throw new BadRequestException('Invalid or expired verification token');
     }
 
-    await this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { id: user.id },
       data: {
         emailVerified: true,
@@ -107,6 +116,14 @@ export class AuthService {
         emailVerifyExpires: null,
       },
     });
+
+    if (updated?.email) {
+      const name =
+        user.affiliate?.firstName || user.affiliate?.lastName
+          ? `${user.affiliate?.firstName || ''} ${user.affiliate?.lastName || ''}`.trim()
+          : updated.email;
+      await this.emailService.sendApplicationPending(updated.email, name);
+    }
 
     return { message: 'Email verified successfully' };
   }
@@ -136,6 +153,11 @@ export class AuthService {
     if (user.role === UserRole.AFFILIATE && user.affiliate) {
       if (user.affiliate.status === AffiliateStatus.rejected) {
         throw new UnauthorizedException('Your application has been rejected');
+      }
+      if (user.affiliate.status === AffiliateStatus.pending) {
+        throw new UnauthorizedException(
+          'Your application has been received and is pending review. You will receive access once approved.'
+        );
       }
       if (user.affiliate.status === AffiliateStatus.disabled) {
         throw new UnauthorizedException('Your account has been disabled');

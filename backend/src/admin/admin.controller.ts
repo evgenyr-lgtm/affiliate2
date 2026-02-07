@@ -48,6 +48,12 @@ export class AdminController {
     return this.adminService.updateAffiliateStatus(id, status, req.user.email);
   }
 
+  @Post('affiliates/:id/resend-verification')
+  @ApiOperation({ summary: 'Resend affiliate verification email' })
+  async resendAffiliateVerification(@Param('id') id: string) {
+    return this.adminService.resendAffiliateVerification(id);
+  }
+
   @Put('affiliates/:id/commission')
   @ApiOperation({ summary: 'Update affiliate commission' })
   async updateCommission(

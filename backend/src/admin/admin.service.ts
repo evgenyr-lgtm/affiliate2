@@ -7,12 +7,15 @@ import { UpdateAffiliateAdminDto } from './dto/update-affiliate-admin.dto';
 import { UpdateAdminProfileDto } from './dto/update-admin-profile.dto';
 import { AffiliateStatus, UserRole, PaymentTerm, RateType } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { EmailService } from '../email/email.service';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class AdminService {
   constructor(
     private prisma: PrismaService,
     private affiliatesService: AffiliatesService,
+    private emailService: EmailService,
   ) {}
 
   async getAllAffiliates(filters?: {
@@ -64,6 +67,38 @@ export class AdminService {
 
   async updateAffiliateStatus(affiliateId: string, status: AffiliateStatus, userEmail: string) {
     return this.affiliatesService.updateStatus(affiliateId, status, userEmail);
+  }
+
+  async resendAffiliateVerification(affiliateId: string) {
+    const affiliate = await this.prisma.affiliate.findUnique({
+      where: { id: affiliateId },
+      include: { user: true },
+    });
+
+    if (!affiliate) {
+      throw new NotFoundException('Affiliate not found');
+    }
+
+    if (affiliate.user.emailVerified) {
+      throw new BadRequestException('Affiliate email is already verified');
+    }
+
+    const token = uuidv4();
+    const expires = new Date();
+    expires.setHours(expires.getHours() + 24);
+
+    await this.prisma.user.update({
+      where: { id: affiliate.userId },
+      data: {
+        emailVerifyToken: token,
+        emailVerifyExpires: expires,
+        emailVerified: false,
+      },
+    });
+
+    await this.emailService.sendVerificationEmail(affiliate.user.email, token);
+
+    return { message: 'Verification email sent' };
   }
 
   async getAdminProfile(userId: string) {
@@ -241,7 +276,7 @@ export class AdminService {
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const slug = await this.generateAffiliateSlug(dto.firstName, dto.lastName);
 
-    const status = dto.status ?? AffiliateStatus.pending;
+    const status = AffiliateStatus.active;
     const paymentTerm = dto.paymentTerm ?? PaymentTerm.monthly;
     const rateType = dto.rateType ?? RateType.percent;
     const rateValue = dto.rateValue ?? 0;

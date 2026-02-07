@@ -27,6 +27,28 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('User not found');
     }
 
+    if (user.isBlocked) {
+      throw new UnauthorizedException('Your account has been blocked');
+    }
+
+    if (!user.emailVerified) {
+      throw new UnauthorizedException('Please verify your email before logging in');
+    }
+
+    if (user.role === 'AFFILIATE' && user.affiliate) {
+      if (user.affiliate.status === 'rejected') {
+        throw new UnauthorizedException('Your application has been rejected');
+      }
+      if (user.affiliate.status === 'pending') {
+        throw new UnauthorizedException(
+          'Your application has been received and is pending review. You will receive access once approved.'
+        );
+      }
+      if (user.affiliate.status === 'disabled') {
+        throw new UnauthorizedException('Your account has been disabled');
+      }
+    }
+
     return {
       userId: user.id,
       email: user.email,

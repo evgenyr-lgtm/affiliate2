@@ -8,7 +8,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import api from '@/lib/api'
 import toast from 'react-hot-toast'
-import { setAuthCookies } from '@/lib/authCookies'
 import { phoneCountries } from '@/lib/phoneCountries'
 import PhoneCountrySelect from '@/components/PhoneCountrySelect'
 
@@ -124,16 +123,12 @@ export default function RegisterPage() {
         accountType: typeFromForm || 'individual',
         phone: phoneValue || undefined,
       })
-      const { accessToken, refreshToken, user } = response.data
-
-      setAuthCookies(accessToken, refreshToken)
-
-      toast.success('Registration successful! Welcome to your account.')
-      if (user?.role === 'AFFILIATE') {
-        router.push('/dashboard')
+      if (response.data?.message) {
+        toast.success(response.data.message)
       } else {
-        router.push('/admin')
+        toast.success('Registration successful! Please verify your email before logging in.')
       }
+      router.push('/login')
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Registration failed')
     } finally {

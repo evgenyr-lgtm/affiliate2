@@ -26,9 +26,9 @@ export class EmailService {
 
   async sendVerificationEmail(email: string, token: string) {
     const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
-    const verificationUrl = `${frontendUrl}/verify-email?token=${token}`;
+    const verificationUrl = `${frontendUrl}/login?token=${token}`;
 
-    const template = await this.getEmailTemplate('Application Pending');
+    const template = await this.getEmailTemplate('Email Verification Request');
     if (!template || !template.enabled) {
       // Fallback if template not configured
       return this.sendEmail({
@@ -45,6 +45,7 @@ export class EmailService {
 
     const body = this.replaceVariables(template.body, {
       verification_url: verificationUrl,
+      frontend_url: frontendUrl,
     });
 
     return this.sendEmail({
@@ -84,6 +85,7 @@ export class EmailService {
 
     const affiliateName = `${affiliate.firstName} ${affiliate.lastName}`.trim();
     const dateOfRegistration = this.formatDate(affiliate.createdAt);
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
     const body = this.replaceVariables(template.body, {
       name: affiliateName,
       first_name: affiliate.firstName,
@@ -119,6 +121,7 @@ export class EmailService {
       affiliate_date_of_registration: dateOfRegistration || 'N/A',
       affiliate_marketing_emails_consent: affiliate.notifyMarketing ? 'yes' : 'no',
       affiliate_system_notifications_consent: affiliate.notifySystem ? 'yes' : 'no',
+      frontend_url: frontendUrl,
     });
 
     return this.sendEmail({
@@ -212,6 +215,7 @@ export class EmailService {
     const contractEnd = this.formatDate(contractParts.end);
     const dateOfRegistration = this.formatDate(resolvedReferral.entryDate);
     const affiliateName = `${resolvedReferral.affiliate?.firstName || ''} ${resolvedReferral.affiliate?.lastName || ''}`.trim();
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
 
     const body = this.replaceVariables(template.body, {
       referral_url: `/admin/referrals/${resolvedReferral.id}`,
@@ -254,6 +258,8 @@ export class EmailService {
       referral_marital_status: resolvedReferral.maritalStatus || 'N/A',
       referral_additional_information: resolvedReferral.internalNotes || 'N/A',
       referral_notes: resolvedReferral.notes || 'N/A',
+      referral_date_of_registration: dateOfRegistration || 'N/A',
+      frontend_url: frontendUrl,
     });
 
     return this.sendEmail({
@@ -397,7 +403,31 @@ export class EmailService {
       referral_marital_status: 'single',
       referral_additional_information: 'Additional info',
       referral_notes: 'Referral notes',
+      referral_date_of_registration: today,
+      frontend_url: 'https://affiliate.example.com',
     };
+  }
+
+  async sendApplicationPending(email: string, name: string) {
+    const template = await this.getEmailTemplate('Application Pending');
+    if (!template || !template.enabled) {
+      return;
+    }
+
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const body = this.replaceVariables(template.body, {
+      name,
+      first_name: name.split(' ')[0] || name,
+      last_name: name.split(' ').slice(1).join(' ') || '',
+      frontend_url: frontendUrl,
+      verification_url: `${frontendUrl}/login?verified=1`,
+    });
+
+    return this.sendEmail({
+      to: email,
+      subject: template.subject,
+      html: body,
+    });
   }
 
   private splitContractDuration(value?: string) {

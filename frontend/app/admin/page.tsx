@@ -34,6 +34,7 @@ type AffiliateRow = {
     email?: string
     createdAt?: string
     isBlocked?: boolean
+    emailVerified?: boolean
   }
 }
 
@@ -243,6 +244,13 @@ const templateGroups = {
   ],
   affiliate: [
     {
+      name: 'Email Verification Request',
+      group: 'affiliate' as const,
+      description: 'Sent to affiliates to verify their email address.',
+      subject: 'Email Verification',
+      body: 'Test',
+    },
+    {
       name: 'Application Pending',
       group: 'affiliate' as const,
       description: 'Sent when an affiliate registers and approval is required.',
@@ -319,6 +327,7 @@ const availableTags = [
   { label: 'Affiliate Date of Registration', token: '{affiliate_date_of_registration}' },
   { label: 'Affiliate Marketing Emails Consent', token: '{affiliate_marketing_emails_consent}' },
   { label: 'Affiliate System Notifications Consent', token: '{affiliate_system_notifications_consent}' },
+  { label: 'Verification URL', token: '{verification_url}' },
   { label: 'Referral Account Type', token: '{referral_account_type}' },
   { label: 'Referral First Name', token: '{referral_first_name}' },
   { label: 'Referral Last Name', token: '{referral_last_name}' },
@@ -334,7 +343,11 @@ const availableTags = [
   { label: 'Referral Marital Status', token: '{referral_marital_status}' },
   { label: 'Referral Additional Information', token: '{referral_additional_information}' },
   { label: 'Referral Notes', token: '{referral_notes}' },
+  { label: 'Referral Date of Registration', token: '{referral_date_of_registration}' },
+  { label: 'Portal URL', token: '{frontend_url}' },
 ]
+
+const availableTagTokens = availableTags.map((tag) => tag.token)
 
 const labelFrom = (value: string, options: { value: string; label: string }[]) =>
   options.find((option) => option.value === value)?.label || value
@@ -910,6 +923,18 @@ export default function AdminPage() {
     },
   })
 
+  const resendVerificationMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return api.post(`/admin/affiliates/${id}/resend-verification`)
+    },
+    onSuccess: () => {
+      toast.success('Verification email sent')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to send verification email')
+    },
+  })
+
 
   const updateReferralMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
@@ -1175,7 +1200,7 @@ export default function AdminPage() {
           subject: template.subject,
           body: template.body,
           enabled: true,
-          variables: availableTags,
+          variables: availableTagTokens,
         },
         silent: true,
       })
@@ -1905,6 +1930,18 @@ export default function AdminPage() {
                                     >
                                       <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
                                         <path d="M16.704 5.29 14.71 3.296A1 1 0 0 0 14.003 3H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-.296-.71ZM6 5h7v3H6V5Zm8 11H6v-5h8v5Z" />
+                                      </svg>
+                                    </button>
+                                  )}
+                                  {!affiliate.user?.emailVerified && (
+                                    <button
+                                      type="button"
+                                      title="Resend verification email"
+                                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 text-gray-600 hover:border-gray-300"
+                                      onClick={() => resendVerificationMutation.mutate(affiliate.id)}
+                                    >
+                                      <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+                                        <path d="M2 6.75A2.75 2.75 0 0 1 4.75 4h14.5A2.75 2.75 0 0 1 22 6.75v10.5A2.75 2.75 0 0 1 19.25 20H4.75A2.75 2.75 0 0 1 2 17.25V6.75Zm2.75-.25a.75.75 0 0 0-.75.75v.379l7.586 4.736a2.75 2.75 0 0 0 2.828 0L22 7.629V7.5a.75.75 0 0 0-.75-.75H4.75Zm17.25 3.879-6.817 4.254a4.25 4.25 0 0 1-4.366 0L4 10.379v6.871c0 .414.336.75.75.75h14.5a.75.75 0 0 0 .75-.75v-6.871Z" />
                                       </svg>
                                     </button>
                                   )}
@@ -3464,7 +3501,7 @@ export default function AdminPage() {
                       subject: newTemplateSubject,
                       body: newTemplateBody,
                       enabled: true,
-                      variables: availableTags,
+                      variables: availableTagTokens,
                     },
                   })
                 }}
