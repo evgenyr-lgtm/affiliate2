@@ -31,13 +31,16 @@ const reactLoadableDestination = path.join(standaloneRoot, 'react-loadable-manif
 const serverDirSource = path.join(root, '.next', 'server');
 const serverDirDestination = path.join(standaloneRoot, 'server');
 
-const copyDir = (src, dest) => {
+const copyDir = (src, dest, options = {}) => {
   fs.mkdirSync(dest, { recursive: true });
   for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
     const srcPath = path.join(src, entry.name);
     const destPath = path.join(dest, entry.name);
+    if (options.skip && options.skip(entry, srcPath, destPath)) {
+      continue;
+    }
     if (entry.isDirectory()) {
-      copyDir(srcPath, destPath);
+      copyDir(srcPath, destPath, options);
     } else {
       fs.copyFileSync(srcPath, destPath);
     }
@@ -45,6 +48,7 @@ const copyDir = (src, dest) => {
 };
 
 try {
+  const nextRoot = path.join(root, '.next');
   const nestedServer = path.join(standaloneBase, 'frontend', 'server.js');
   const rootServer = path.join(standaloneBase, 'server.js');
 
@@ -167,6 +171,16 @@ try {
     console.log('apphosting-postbuild: copied server directory into standalone bundle.');
   } else {
     console.warn('apphosting-postbuild: server directory not found, skipping.');
+  }
+
+  if (fs.existsSync(nextRoot)) {
+    fs.mkdirSync(standaloneRoot, { recursive: true });
+    copyDir(nextRoot, standaloneRoot, {
+      skip: (entry) => entry.isDirectory() && entry.name === 'standalone',
+    });
+    console.log('apphosting-postbuild: copied .next directory into standalone bundle.');
+  } else {
+    console.warn('apphosting-postbuild: .next directory not found, skipping.');
   }
 } catch (error) {
   console.error('apphosting-postbuild: failed to copy routes-manifest.json:', error);
