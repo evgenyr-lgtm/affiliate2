@@ -18,7 +18,7 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000',
   },
-  trailingSlash: true,
+  trailingSlash: false,
   experimental: {
     // Ensure standalone tracing includes hoisted deps in monorepo
     outputFileTracingRoot: path.join(__dirname, '..'),
