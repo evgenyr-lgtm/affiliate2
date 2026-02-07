@@ -40,9 +40,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         throw new UnauthorizedException('Your application has been rejected');
       }
       if (user.affiliate.status === 'pending') {
-        throw new UnauthorizedException(
-          'Your application has been received and is pending review. You will receive access once approved.'
-        );
+        throw new UnauthorizedException('Registration is pending review.');
       }
       if (user.affiliate.status === 'disabled') {
         throw new UnauthorizedException('Your account has been disabled');

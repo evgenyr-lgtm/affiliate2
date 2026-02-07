@@ -24,7 +24,11 @@ export class EmailService {
   ) {
   }
 
-  async sendVerificationEmail(email: string, token: string) {
+  async sendVerificationEmail(
+    email: string,
+    token: string,
+    affiliate?: { firstName?: string; lastName?: string },
+  ) {
     const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
     const verificationUrl = `${frontendUrl}/login?token=${token}`;
 
@@ -43,36 +47,37 @@ export class EmailService {
       });
     }
 
-    const body = this.replaceVariables(template.body, {
+    const variables = {
       verification_url: verificationUrl,
       frontend_url: frontendUrl,
-    });
+      affiliate_first_name: affiliate?.firstName || '',
+      affiliate_last_name: affiliate?.lastName || '',
+    };
+    const body = this.replaceVariables(template.body, variables);
+    const subject = this.replaceVariables(template.subject, variables);
 
     return this.sendEmail({
       to: email,
-      subject: template.subject,
+      subject,
       html: body,
     });
   }
 
-  async sendPasswordResetEmail(email: string, token: string) {
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
-    const resetUrl = `${frontendUrl}/reset-password?token=${token}`;
-
+  async sendPasswordResetEmail(email: string, tempPassword: string) {
     return this.sendEmail({
       to: email,
-      subject: 'Password Reset Request',
+      subject: 'Temporary Password',
       html: `
-        <h2>Password Reset Request</h2>
-        <p>You requested to reset your password. Click the link below to reset it:</p>
-        <a href="${resetUrl}">Reset Password</a>
-        <p>This link will expire in 1 hour.</p>
+        <h2>Temporary Password</h2>
+        <p>Use the temporary password below to log in to your account:</p>
+        <p><strong>${tempPassword}</strong></p>
+        <p>It is very important that you change this temporary password immediately after logging in via Account Settings.</p>
         <p>If you didn't request this, please ignore this email.</p>
       `,
     });
   }
 
-  async sendNewAffiliateRegistration(affiliate: any) {
+  async sendNewAffiliateRegistration(affiliate: any, affiliateEmail?: string) {
     const template = await this.getEmailTemplate('New Affiliate Registration');
     if (!template || !template.enabled) {
       return;
@@ -86,11 +91,12 @@ export class EmailService {
     const affiliateName = `${affiliate.firstName} ${affiliate.lastName}`.trim();
     const dateOfRegistration = this.formatDate(affiliate.createdAt);
     const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
-    const body = this.replaceVariables(template.body, {
+    const emailValue = affiliate.user?.email || affiliateEmail || 'N/A';
+    const variables = {
       name: affiliateName,
       first_name: affiliate.firstName,
       last_name: affiliate.lastName,
-      user_email: affiliate.user?.email || 'N/A',
+      user_email: emailValue,
       affiliate_id: affiliate.id,
       account_type: affiliate.accountType,
       company: affiliate.companyName || 'N/A',
@@ -98,7 +104,7 @@ export class EmailService {
       phone: affiliate.phone || 'N/A',
       country: 'N/A',
       affiliate_name: affiliateName,
-      affiliate_email: affiliate.user?.email || 'N/A',
+      affiliate_email: emailValue,
       phone_number: affiliate.phone || 'N/A',
       job_title: affiliate.jobTitle || 'N/A',
       total_earnings: `${affiliate.totalEarnings ?? 0}`,
@@ -122,11 +128,13 @@ export class EmailService {
       affiliate_marketing_emails_consent: affiliate.notifyMarketing ? 'yes' : 'no',
       affiliate_system_notifications_consent: affiliate.notifySystem ? 'yes' : 'no',
       frontend_url: frontendUrl,
-    });
+    };
+    const body = this.replaceVariables(template.body, variables);
+    const subject = this.replaceVariables(template.subject, variables);
 
     return this.sendEmail({
       to: managerEmails,
-      subject: template.subject,
+      subject,
       html: body,
     });
   }

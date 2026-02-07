@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
+import { randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
 import { EmailService } from '../email/email.service';
@@ -68,9 +69,12 @@ export class AuthService {
     });
 
     // Send internal notification
-    await this.emailService.sendNewAffiliateRegistration(user.affiliate!);
+    await this.emailService.sendNewAffiliateRegistration(user.affiliate!, user.email);
     // Send verification email
-    await this.emailService.sendVerificationEmail(user.email, verificationToken);
+    await this.emailService.sendVerificationEmail(user.email, verificationToken, {
+      firstName: registerDto.firstName,
+      lastName: registerDto.lastName,
+    });
 
     // TODO: Create Zoho Desk ticket
     // const zohoService = new ZohoService(this.configService);
@@ -155,9 +159,7 @@ export class AuthService {
         throw new UnauthorizedException('Your application has been rejected');
       }
       if (user.affiliate.status === AffiliateStatus.pending) {
-        throw new UnauthorizedException(
-          'Your application has been received and is pending review. You will receive access once approved.'
-        );
+        throw new UnauthorizedException('Registration is pending review.');
       }
       if (user.affiliate.status === AffiliateStatus.disabled) {
         throw new UnauthorizedException('Your account has been disabled');
@@ -209,25 +211,29 @@ export class AuthService {
     const user = await this.usersService.findByEmail(email);
     
     if (!user) {
-      // Don't reveal if email exists
-      return { message: 'If the email exists, a password reset link has been sent' };
+      return { exists: false };
     }
 
-    const resetToken = uuidv4();
-    const resetExpires = new Date();
-    resetExpires.setHours(resetExpires.getHours() + 1);
+    const tempPassword = this.generateTempPassword();
+    const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
     await this.prisma.user.update({
       where: { id: user.id },
       data: {
-        resetPasswordToken: resetToken,
-        resetPasswordExpires: resetExpires,
+        password: hashedPassword,
+        resetPasswordToken: null,
+        resetPasswordExpires: null,
       },
     });
 
-    await this.emailService.sendPasswordResetEmail(user.email, resetToken);
+    await this.emailService.sendPasswordResetEmail(user.email, tempPassword);
 
-    return { message: 'If the email exists, a password reset link has been sent' };
+    return { exists: true };
+  }
+
+  async checkPasswordResetEmail(email: string) {
+    const user = await this.usersService.findByEmail(email);
+    return { exists: Boolean(user) };
   }
 
   async resetPassword(resetPasswordDto: ResetPasswordDto) {
@@ -289,6 +295,10 @@ export class AuthService {
     });
 
     return { accessToken, refreshToken };
+  }
+
+  private generateTempPassword() {
+    return randomBytes(6).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
   }
 
   async validateUser(email: string, password: string): Promise<any> {

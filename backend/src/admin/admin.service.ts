@@ -96,7 +96,10 @@ export class AdminService {
       },
     });
 
-    await this.emailService.sendVerificationEmail(affiliate.user.email, token);
+    await this.emailService.sendVerificationEmail(affiliate.user.email, token, {
+      firstName: affiliate.firstName,
+      lastName: affiliate.lastName,
+    });
 
     return { message: 'Verification email sent' };
   }

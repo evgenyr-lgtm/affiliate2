@@ -55,6 +55,13 @@ export class AuthController {
     return this.authService.requestPasswordReset(email);
   }
 
+  @Post('forgot-password/check')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Check if email exists for password reset' })
+  async checkForgotPassword(@Body('email') email: string) {
+    return this.authService.checkPasswordResetEmail(email);
+  }
+
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Reset password with token' })

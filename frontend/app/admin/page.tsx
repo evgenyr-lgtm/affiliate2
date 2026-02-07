@@ -192,6 +192,19 @@ const getBackendBaseUrl = () => {
   return apiUrl.replace(/\/api\/?$/, '')
 }
 
+const emailFooter = `
+<p style="margin: 24px 0 0; color: #6b7280; font-size: 13px;">
+  Contact us: <a href="mailto:marketing@accessfinancial.com" style="color: #2b36ff;">marketing@accessfinancial.com</a>
+</p>
+`
+
+const wrapEmailBody = (content: string) => `
+<div style="font-family: Arial, sans-serif; font-size: 14px; color: #111827; line-height: 1.6;">
+  ${content}
+  ${emailFooter}
+</div>
+`
+
 const templateGroups = {
   manager: [
     {
@@ -200,9 +213,10 @@ const templateGroups = {
       description: 'Sent to a manager when a new affiliate registers.',
       subject:
         'AF Affiliate Portal | New Affiliate Registration | {affiliate_name} | {account_type} | {date_of_registration}',
-      body: `<h2>New Affiliate Registration</h2>
-<p>Details:</p>
-<ul>
+      body: wrapEmailBody(`
+<h2 style="margin: 0 0 12px; font-size: 20px; color: #111827;">New Affiliate Registration</h2>
+<p style="margin: 0 0 12px; color: #4b5563;">Details:</p>
+<ul style="margin: 0; padding-left: 18px; color: #111827;">
   <li>Account Type: {account_type}</li>
   <li>Full Name: {affiliate_name}</li>
   <li>Company Name: {company_name}</li>
@@ -211,7 +225,8 @@ const templateGroups = {
   <li>Email: {affiliate_email}</li>
   <li>Phone Number: {phone_number}</li>
   <li>Date of Registration: {date_of_registration}</li>
-</ul>`,
+</ul>
+      `),
     },
     {
       name: 'New Referral',
@@ -219,9 +234,10 @@ const templateGroups = {
       description: 'Sent to a manager when a new referral is created.',
       subject:
         'AF Affiliate Portal | New Referral Registration | From {affiliate_name} | {date_of_registration}',
-      body: `<h2>New Referral Registration</h2>
-<p>Details:</p>
-<ul>
+      body: wrapEmailBody(`
+<h2 style="margin: 0 0 12px; font-size: 20px; color: #111827;">New Referral Registration</h2>
+<p style="margin: 0 0 12px; color: #4b5563;">Details:</p>
+<ul style="margin: 0 0 16px; padding-left: 18px; color: #111827;">
   <li>Affiliate Name: {affiliate_name}</li>
   <li>Account Type: {account_type}</li>
   <li>Full Name: {referral_name}</li>
@@ -232,14 +248,15 @@ const templateGroups = {
   <li>Phone Number: {phone_number}</li>
 </ul>
 
-<p>Contract Details:</p>
-<ul>
+<p style="margin: 0 0 12px; color: #4b5563;">Contract Details:</p>
+<ul style="margin: 0; padding-left: 18px; color: #111827;">
   <li>Nationality: {nationality}</li>
   <li>Work Country: {work_country}</li>
   <li>Contract Period: {contract_start_date} - {contract_end_date}</li>
   <li>Marital Status: {marital_status}</li>
   <li>Date of Registration: {date_of_registration}</li>
-</ul>`,
+</ul>
+      `),
     },
   ],
   affiliate: [
@@ -248,62 +265,89 @@ const templateGroups = {
       group: 'affiliate' as const,
       description: 'Sent to affiliates to verify their email address.',
       subject: 'Email Verification',
-      body: 'Test',
+      body: wrapEmailBody(`
+<h2 style="margin: 0 0 12px; font-size: 20px; color: #111827;">Email Verification</h2>
+<p style="margin: 0 0 12px; color: #4b5563;">Hi {affiliate_first_name},</p>
+<p style="margin: 0 0 16px; color: #111827;">
+  Please verify your email address by clicking the button below.
+</p>
+<p style="margin: 0 0 16px;">
+  <a href="{verification_url}" style="display: inline-block; background: #2b36ff; color: #ffffff; text-decoration: none; padding: 10px 16px; border-radius: 8px; font-weight: 600;">
+    Verify Email
+  </a>
+</p>
+<p style="margin: 0; color: #6b7280;">If you did not request this, please ignore this email.</p>
+      `),
     },
     {
       name: 'Application Pending',
       group: 'affiliate' as const,
       description: 'Sent when an affiliate registers and approval is required.',
       subject: 'Your application is pending | {first_name}{last_name}',
-      body:
-        'Hi {first_name},\n\n' +
-        'Thank you for registering. Your application is currently pending review.\n\n' +
-        'Kind regards,\n' +
-        'Access Financial Team',
+      body: wrapEmailBody(`
+<h2 style="margin: 0 0 12px; font-size: 20px; color: #111827;">Application Pending</h2>
+<p style="margin: 0 0 12px; color: #4b5563;">Hi {first_name},</p>
+<p style="margin: 0 0 12px; color: #111827;">
+  Thank you for registering. Your application is currently pending review.
+</p>
+<p style="margin: 0; color: #111827;">Kind regards,<br />Access Financial Team</p>
+      `),
     },
     {
       name: 'Application Rejected',
       group: 'affiliate' as const,
       description: 'Sent when an affiliate application is rejected.',
       subject: 'Your application was rejected | {first_name}{last_name}',
-      body:
-        'Hi {first_name},\n\n' +
-        'We are sorry to inform you that your application was rejected.\n\n' +
-        'Kind regards,\n' +
-        'Access Financial Team',
+      body: wrapEmailBody(`
+<h2 style="margin: 0 0 12px; font-size: 20px; color: #111827;">Application Rejected</h2>
+<p style="margin: 0 0 12px; color: #4b5563;">Hi {first_name},</p>
+<p style="margin: 0 0 12px; color: #111827;">
+  We are sorry to inform you that your application was rejected.
+</p>
+<p style="margin: 0; color: #111827;">Kind regards,<br />Access Financial Team</p>
+      `),
     },
     {
       name: 'New Referral Added',
       group: 'affiliate' as const,
       description: 'Sent to affiliates when they add a new referral.',
       subject: 'New referral submitted | {first_name}{last_name}',
-      body:
-        'Hi {first_name},\n\n' +
-        'Your new referral has been submitted successfully.\n\n' +
-        'Kind regards,\n' +
-        'Access Financial Team',
+      body: wrapEmailBody(`
+<h2 style="margin: 0 0 12px; font-size: 20px; color: #111827;">Referral Submitted</h2>
+<p style="margin: 0 0 12px; color: #4b5563;">Hi {first_name},</p>
+<p style="margin: 0 0 12px; color: #111827;">
+  Your new referral has been submitted successfully.
+</p>
+<p style="margin: 0; color: #111827;">Kind regards,<br />Access Financial Team</p>
+      `),
     },
     {
       name: 'Referral Approved',
       group: 'affiliate' as const,
       description: 'Sent when a referral is approved.',
       subject: 'Referral approved | {first_name}{last_name}',
-      body:
-        'Hi {first_name},\n\n' +
-        'Your referral has been approved.\n\n' +
-        'Kind regards,\n' +
-        'Access Financial Team',
+      body: wrapEmailBody(`
+<h2 style="margin: 0 0 12px; font-size: 20px; color: #111827;">Referral Approved</h2>
+<p style="margin: 0 0 12px; color: #4b5563;">Hi {first_name},</p>
+<p style="margin: 0 0 12px; color: #111827;">
+  Your referral has been approved.
+</p>
+<p style="margin: 0; color: #111827;">Kind regards,<br />Access Financial Team</p>
+      `),
     },
     {
       name: 'Payment Done',
       group: 'affiliate' as const,
       description: 'Sent to an affiliate when a payment is processed.',
       subject: 'Payment processed | {first_name}{last_name}',
-      body:
-        'Hi {first_name},\n\n' +
-        'Your payment has been processed.\n\n' +
-        'Kind regards,\n' +
-        'Access Financial Team',
+      body: wrapEmailBody(`
+<h2 style="margin: 0 0 12px; font-size: 20px; color: #111827;">Payment Processed</h2>
+<p style="margin: 0 0 12px; color: #4b5563;">Hi {first_name},</p>
+<p style="margin: 0 0 12px; color: #111827;">
+  Your payment has been processed.
+</p>
+<p style="margin: 0; color: #111827;">Kind regards,<br />Access Financial Team</p>
+      `),
     },
   ],
 }
