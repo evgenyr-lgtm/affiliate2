@@ -66,6 +66,21 @@ const formatDateDisplay = (value?: string) => {
 const labelFrom = (value: string) =>
   value ? value.charAt(0).toUpperCase() + value.slice(1) : '-'
 
+const currencySymbol = (currency?: string) => {
+  switch (currency) {
+    case 'USD':
+      return '$'
+    case 'EUR':
+      return '€'
+    case 'GBP':
+      return '£'
+    case 'RUB':
+      return '₽'
+    default:
+      return currency || ''
+  }
+}
+
 const getReferralName = (referral: ReferralRow) => {
   if (referral.accountType === 'company') {
     const contactName = `${referral.contactFirstName || ''} ${referral.contactLastName || ''}`.trim()
@@ -957,7 +972,8 @@ export default function DashboardPage() {
                         <td className="px-4 py-3">{affiliateData.rateValue ?? 0}</td>
                         {visibleColumns.totalEarnings && (
                           <td className="px-4 py-3">
-                            {affiliateData.currency || 'USD'} {affiliateData.totalEarnings ?? 0}
+                            {currencySymbol(affiliateData.currency)}
+                            {affiliateData.totalEarnings ?? 0}
                           </td>
                         )}
                         <td className="px-4 py-3">{affiliateData.currency || 'USD'}</td>

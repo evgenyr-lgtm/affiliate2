@@ -183,9 +183,6 @@ const buildShareLinks = (url: string) => ({
   Telegram: `https://t.me/share/url?url=${encodeURIComponent(url)}`,
   WhatsApp: `https://wa.me/?text=${encodeURIComponent(url)}`,
   LinkedIn: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`,
-  Email: `mailto:?subject=${encodeURIComponent('Marketing Materials')}&body=${encodeURIComponent(
-    `Download link: ${url}`
-  )}`,
   Facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
 })
 
@@ -304,28 +301,58 @@ const templateGroups = {
 }
 
 const availableTags = [
-  { label: 'Account Type', token: '{account_type}' },
-  { label: 'Affiliate Name', token: '{affiliate_name}' },
-  { label: 'Referral Name', token: '{referral_name}' },
+  { label: 'Affiliate Account Type', token: '{affiliate_account_type}' },
+  { label: 'Affiliate First Name', token: '{affiliate_first_name}' },
+  { label: 'Affiliate Last Name', token: '{affiliate_last_name}' },
+  { label: 'Affiliate Company Name', token: '{affiliate_company_name}' },
+  { label: 'Affiliate Company Country', token: '{affiliate_company_country}' },
+  { label: 'Affiliate Job Title', token: '{affiliate_job_title}' },
   { label: 'Affiliate Email', token: '{affiliate_email}' },
+  { label: 'Affiliate Phone', token: '{affiliate_phone_number}' },
+  { label: 'Affiliate Total Earnings', token: '{affiliate_total_earnings}' },
+  { label: 'Affiliate Status', token: '{affiliate_status}' },
+  { label: 'Affiliate Payment Term', token: '{affiliate_payment_term}' },
+  { label: 'Affiliate Rate Type', token: '{affiliate_rate_type}' },
+  { label: 'Affiliate Rate', token: '{affiliate_rate}' },
+  { label: 'Affiliate Currency', token: '{affiliate_currency}' },
+  { label: 'Affiliate Notes', token: '{affiliate_notes}' },
+  { label: 'Affiliate Date of Registration', token: '{affiliate_date_of_registration}' },
+  { label: 'Affiliate Marketing Emails Consent', token: '{affiliate_marketing_emails_consent}' },
+  { label: 'Affiliate System Notifications Consent', token: '{affiliate_system_notifications_consent}' },
+  { label: 'Referral Account Type', token: '{referral_account_type}' },
+  { label: 'Referral First Name', token: '{referral_first_name}' },
+  { label: 'Referral Last Name', token: '{referral_last_name}' },
+  { label: 'Referral Company Name', token: '{referral_company_name}' },
+  { label: 'Referral Company Country', token: '{referral_company_country}' },
+  { label: 'Referral Job Title', token: '{referral_job_title}' },
   { label: 'Referral Email', token: '{referral_email}' },
-  { label: 'Work Country', token: '{work_country}' },
-  { label: 'Nationality', token: '{nationality}' },
-  { label: 'Contract Start Date', token: '{contract_start_date}' },
-  { label: 'Contract End Date', token: '{contract_end_date}' },
-  { label: 'Marital Status', token: '{marital_status}' },
-  { label: 'Phone Number', token: '{phone_number}' },
-  { label: 'Company Name', token: '{company_name}' },
-  { label: 'Country', token: '{country}' },
-  { label: 'Job Title', token: '{job_title}' },
-  { label: 'Total Earnings', token: '{total_earnings}' },
-  { label: 'Payment Status', token: '{payment_status}' },
-  { label: 'Status', token: '{registration_status}' },
-  { label: 'Date of Registration', token: '{date_of_registration}' },
+  { label: 'Referral Phone', token: '{referral_phone_number}' },
+  { label: 'Referral Work Country', token: '{referral_work_country}' },
+  { label: 'Referral Nationality', token: '{referral_nationality}' },
+  { label: 'Referral Contract Start Date', token: '{referral_contract_start_date}' },
+  { label: 'Referral Contract End Date', token: '{referral_contract_end_date}' },
+  { label: 'Referral Marital Status', token: '{referral_marital_status}' },
+  { label: 'Referral Additional Information', token: '{referral_additional_information}' },
+  { label: 'Referral Notes', token: '{referral_notes}' },
 ]
 
 const labelFrom = (value: string, options: { value: string; label: string }[]) =>
   options.find((option) => option.value === value)?.label || value
+
+const currencySymbol = (currency?: string) => {
+  switch (currency) {
+    case 'USD':
+      return '$'
+    case 'EUR':
+      return '€'
+    case 'GBP':
+      return '£'
+    case 'RUB':
+      return '₽'
+    default:
+      return currency || ''
+  }
+}
 
 const getReferralName = (referral: ReferralRow) => {
   if (referral.accountType === 'company') {
@@ -1277,7 +1304,7 @@ export default function AdminPage() {
       'Payment Term': labelFrom(affiliate.paymentTerm, paymentTermOptions),
       'Rate Type': labelFrom(affiliate.rateType, rateTypeOptions),
       Rate: affiliate.rateValue ?? 0,
-      'Total Earnings': affiliate.totalEarnings ?? 0,
+      'Total Earnings': `${currencySymbol(affiliate.currency)}${affiliate.totalEarnings ?? 0}`,
       Currency: affiliate.currency || 'USD',
       Email: affiliate.user?.email || '',
       Phone: affiliate.phone || '',
@@ -1781,19 +1808,25 @@ export default function AdminPage() {
                               </td>
                               {visibleColumns.totalEarnings && (
                                 <td className="px-4 py-3">
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    value={draft.totalEarnings ?? affiliate.totalEarnings ?? 0}
-                                    disabled={!isEditing}
-                                    onChange={(event) =>
-                                      handleDraftChange(affiliate.id, {
-                                        totalEarnings: Number(event.target.value || 0),
-                                      })
-                                    }
-                                    className="w-28 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm disabled:bg-gray-50"
-                                  />
+                                  {isEditing ? (
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      value={draft.totalEarnings ?? affiliate.totalEarnings ?? 0}
+                                      onChange={(event) =>
+                                        handleDraftChange(affiliate.id, {
+                                          totalEarnings: Number(event.target.value || 0),
+                                        })
+                                      }
+                                      className="w-28 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm"
+                                    />
+                                  ) : (
+                                    <span>
+                                      {currencySymbol(affiliate.currency)}
+                                      {affiliate.totalEarnings ?? 0}
+                                    </span>
+                                  )}
                                 </td>
                               )}
                               <td className="px-4 py-3">
@@ -3819,39 +3852,23 @@ export default function AdminPage() {
               </div>
               {newReferralType === 'individual' && (
                 <div className="md:col-span-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="relative">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Contract Start Date</label>
                     <input
                       type="date"
                       value={newReferralContractStart}
                       onChange={(event) => setNewReferralContractStart(event.target.value)}
-                      className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-transparent caret-transparent"
+                      className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 pr-10 text-sm text-gray-900"
                     />
-                    <span
-                      className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm ${
-                        newReferralContractStart ? 'text-gray-900' : 'text-gray-500'
-                      }`}
-                    >
-                      {newReferralContractStart
-                        ? formatDateDisplay(newReferralContractStart)
-                        : 'Contract Start Date'}
-                    </span>
                   </div>
-                  <div className="relative">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Contract End Date</label>
                     <input
                       type="date"
                       value={newReferralContractEnd}
                       onChange={(event) => setNewReferralContractEnd(event.target.value)}
-                      className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-transparent caret-transparent"
+                      className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 pr-10 text-sm text-gray-900"
                     />
-                    <span
-                      className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm ${
-                        newReferralContractEnd ? 'text-gray-900' : 'text-gray-500'
-                      }`}
-                    >
-                      {newReferralContractEnd
-                        ? formatDateDisplay(newReferralContractEnd)
-                        : 'Contract End Date'}
-                    </span>
                   </div>
                 </div>
               )}
