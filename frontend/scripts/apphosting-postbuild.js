@@ -28,6 +28,8 @@ const buildManifestSource = path.join(root, '.next', 'build-manifest.json');
 const buildManifestDestination = path.join(standaloneRoot, 'build-manifest.json');
 const reactLoadableSource = path.join(root, '.next', 'react-loadable-manifest.json');
 const reactLoadableDestination = path.join(standaloneRoot, 'react-loadable-manifest.json');
+const serverDirSource = path.join(root, '.next', 'server');
+const serverDirDestination = path.join(standaloneRoot, 'server');
 
 const copyDir = (src, dest) => {
   fs.mkdirSync(dest, { recursive: true });
@@ -153,6 +155,18 @@ try {
     console.log('apphosting-postbuild: copied react-loadable-manifest.json into standalone bundle.');
   } else {
     console.warn('apphosting-postbuild: react-loadable-manifest.json not found, skipping.');
+  }
+
+  if (fs.existsSync(serverDirSource)) {
+    fs.mkdirSync(serverDirDestination, { recursive: true });
+    if (fs.cpSync) {
+      fs.cpSync(serverDirSource, serverDirDestination, { recursive: true });
+    } else {
+      copyDir(serverDirSource, serverDirDestination);
+    }
+    console.log('apphosting-postbuild: copied server directory into standalone bundle.');
+  } else {
+    console.warn('apphosting-postbuild: server directory not found, skipping.');
   }
 } catch (error) {
   console.error('apphosting-postbuild: failed to copy routes-manifest.json:', error);
