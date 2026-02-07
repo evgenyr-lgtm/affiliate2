@@ -208,6 +208,8 @@ export class EmailService {
         ? `${resolvedReferral.contactFirstName || ''} ${resolvedReferral.contactLastName || ''}`.trim()
         : `${resolvedReferral.firstName || ''} ${resolvedReferral.lastName || ''}`.trim();
     const contractParts = this.splitContractDuration(resolvedReferral.contractDuration);
+    const contractStart = this.formatDate(contractParts.start);
+    const contractEnd = this.formatDate(contractParts.end);
     const dateOfRegistration = this.formatDate(resolvedReferral.entryDate);
     const affiliateName = `${resolvedReferral.affiliate?.firstName || ''} ${resolvedReferral.affiliate?.lastName || ''}`.trim();
 
@@ -228,8 +230,8 @@ export class EmailService {
       referral_email: resolvedReferral.email || resolvedReferral.contactEmail || 'N/A',
       work_country: resolvedReferral.workCountry || 'N/A',
       nationality: resolvedReferral.nationality || 'N/A',
-      contract_start_date: contractParts.start || 'N/A',
-      contract_end_date: contractParts.end || 'N/A',
+      contract_start_date: contractStart || 'N/A',
+      contract_end_date: contractEnd || 'N/A',
       marital_status: resolvedReferral.maritalStatus || 'N/A',
       phone_number: resolvedReferral.phone || resolvedReferral.contactPhone || 'N/A',
       company_name: resolvedReferral.companyName || 'N/A',
@@ -247,8 +249,8 @@ export class EmailService {
       referral_phone_number: resolvedReferral.phone || resolvedReferral.contactPhone || 'N/A',
       referral_work_country: resolvedReferral.workCountry || 'N/A',
       referral_nationality: resolvedReferral.nationality || 'N/A',
-      referral_contract_start_date: contractParts.start || 'N/A',
-      referral_contract_end_date: contractParts.end || 'N/A',
+      referral_contract_start_date: contractStart || 'N/A',
+      referral_contract_end_date: contractEnd || 'N/A',
       referral_marital_status: resolvedReferral.maritalStatus || 'N/A',
       referral_additional_information: resolvedReferral.internalNotes || 'N/A',
       referral_notes: resolvedReferral.notes || 'N/A',
