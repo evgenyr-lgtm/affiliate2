@@ -289,6 +289,9 @@ export class EmailService {
       });
     } catch (error) {
       console.error('Email sending error:', error);
+      if (options.requireTransporter) {
+        throw new BadRequestException('Failed to send email. Check SMTP settings.');
+      }
       // Don't block user flows when SMTP is unavailable.
       return;
     }

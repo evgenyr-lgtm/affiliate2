@@ -2731,9 +2731,16 @@ export default function AdminPage() {
                                   <button
                                     className="rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-700"
                                     onClick={() => {
-                                      const recipient = adminProfile?.email || smtpFromEmail || smtpUsername
+                                      const cleanedRecipients = notificationEmails
+                                        .map((email) => email.trim())
+                                        .filter((email) => email.length > 0)
+                                      const recipient =
+                                        cleanedRecipients.join(',') ||
+                                        adminProfile?.email ||
+                                        smtpFromEmail ||
+                                        smtpUsername
                                       if (!recipient) {
-                                        toast.error('Add an email address to send a test message')
+                                        toast.error('Add a notification email to send a test message')
                                         return
                                       }
                                       sendTestTemplateMutation.mutate({
@@ -2882,9 +2889,16 @@ export default function AdminPage() {
                                   <button
                                     className="rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-700"
                                     onClick={() => {
-                                      const recipient = adminProfile?.email || smtpFromEmail || smtpUsername
+                                      const cleanedRecipients = notificationEmails
+                                        .map((email) => email.trim())
+                                        .filter((email) => email.length > 0)
+                                      const recipient =
+                                        cleanedRecipients.join(',') ||
+                                        adminProfile?.email ||
+                                        smtpFromEmail ||
+                                        smtpUsername
                                       if (!recipient) {
-                                        toast.error('Add an email address to send a test message')
+                                        toast.error('Add a notification email to send a test message')
                                         return
                                       }
                                       sendTestTemplateMutation.mutate({
